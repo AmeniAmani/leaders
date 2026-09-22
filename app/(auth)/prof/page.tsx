@@ -209,16 +209,26 @@ export default function LoginProfPage() {
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-semibold hover:bg-indigo-100 border border-indigo-200 transition-colors"
                             >
                                 <Download className="w-4 h-4" />
-                                Installer l application sur cet appareil
+                                Installer l&apos;application sur cet appareil
                             </button>
 
                             {aideInstall && (
                                 <div className="mt-3 mx-auto max-w-sm flex items-start gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200 text-left">
                                     <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                                    <p className="text-xs text-slate-500">
-                                        Ouvrez le menu de votre navigateur (les trois points en haut a droite),
-                                        puis choisissez <span className="font-semibold text-slate-700">Ajouter a l ecran d accueil</span>.
-                                    </p>
+                                    <div className="text-xs text-slate-500 space-y-2">
+                                        <p>
+                                            <span className="font-semibold text-slate-700">Sur Android (Chrome)</span> : ouvrez
+                                            le menu du navigateur, les trois points en haut à droite, puis choisissez
+                                            <span className="font-semibold text-slate-700"> Installer et créer un raccourci </span>
+                                            ou <span className="font-semibold text-slate-700">Ajouter à l&apos;écran d&apos;accueil</span>,
+                                            selon la version de Chrome.
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold text-slate-700">Sur iPad ou iPhone (Safari)</span> : touchez
+                                            le bouton <span className="font-semibold text-slate-700">Partager</span>, puis
+                                            <span className="font-semibold text-slate-700"> Sur l&apos;écran d&apos;accueil</span>.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
