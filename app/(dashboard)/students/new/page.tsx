@@ -31,13 +31,14 @@ export default function NewStudentPage() {
     const [classes, setClasses] = useState<Class[]>([]);
     const [isParentModalOpen, setIsParentModalOpen] = useState(false);
     const [selectedParentId, setSelectedParentId] = useState<string>("");
+    const [selectedClassId, setSelectedClassId] = useState<string>("");
 
     const fetchParents = async () => {
         try {
             const res = await fetch('/api/parents');
             if (res.ok) {
                 const data = await res.json();
-                setParents(data);
+                setParents(Array.isArray(data) ? data : []);
                 return data;
             }
         } catch (error) {
@@ -55,7 +56,7 @@ export default function NewStudentPage() {
 
                 if (classesRes.ok) {
                     const classesData = await classesRes.json();
-                    setClasses(classesData);
+                    setClasses(Array.isArray(classesData) ? classesData : []);
                 }
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -72,23 +73,41 @@ export default function NewStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsLoading(true);
 
         const formData = new FormData(e.currentTarget);
 
+        // Champs obligatoires
+        const firstName = String(formData.get("firstName") || "").trim();
+        const lastName = String(formData.get("lastName") || "").trim();
+
+        if (!firstName) { alert("Le prénom de l'élève est obligatoire."); return; }
+        if (!lastName) { alert("Le nom de l'élève est obligatoire."); return; }
+        if (!selectedClassId) { alert("Sélectionnez la classe de l'élève."); return; }
+        if (!selectedParentId) { alert("Sélectionnez le parent ou tuteur de l'élève."); return; }
+
+        setIsLoading(true);
         try {
             const res = await fetch("/api/students", {
                 method: "POST",
                 body: formData,
             });
 
-            if (!res.ok) throw new Error("Erreur lors de la création");
+            if (!res.ok) {
+                let message = "Erreur lors de la création";
+                try {
+                    const data = await res.json();
+                    if (data?.error) message = data.error;
+                } catch {
+                    // réponse non JSON : on garde le message générique
+                }
+                throw new Error(message);
+            }
 
             router.push("/students");
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Une erreur est survenue.");
+            alert(error?.message || "Une erreur est survenue.");
         } finally {
             setIsLoading(false);
         }
@@ -126,10 +145,17 @@ export default function NewStudentPage() {
                         <h3 className="font-bold text-slate-900">Informations Scolaires</h3>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Classe</label>
+                            <label className="text-sm font-medium text-slate-700">
+                                Classe<span className="text-red-500">*</span>
+                            </label>
                             <select
                                 name="classId"
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                                required
+                                value={selectedClassId}
+                                onChange={(e) => setSelectedClassId(e.target.value)}
+                                className={`w-full px-4 py-2.5 bg-slate-50 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm ${
+                                    selectedClassId ? "border-slate-200" : "border-red-200"
+                                }`}
                             >
                                 <option value="">Sélectionner...</option>
                                 {classes.map((cls) => {
@@ -144,14 +170,19 @@ export default function NewStudentPage() {
                         </div>
 
                         <div className="space-y-2 pt-4 border-t border-slate-50">
-                            <label className="text-sm font-medium text-slate-700">Parent / Tuteur</label>
+                            <label className="text-sm font-medium text-slate-700">
+                                Parent / Tuteur<span className="text-red-500">*</span>
+                            </label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                 <select
                                     name="parentId"
+                                    required
                                     value={selectedParentId}
                                     onChange={(e) => setSelectedParentId(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                                    className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm ${
+                                        selectedParentId ? "border-slate-200" : "border-red-200"
+                                    }`}
                                 >
                                     <option value="">Sélectionner un parent...</option>
                                     {parents.map((p) => (
@@ -168,6 +199,11 @@ export default function NewStudentPage() {
                                     + Créer un nouveau parent
                                 </button>
                             </div>
+                            {parents.length === 0 && (
+                                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                    Aucun parent enregistré. Créez d&apos;abord le parent avant d&apos;inscrire l&apos;élève.
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -182,19 +218,25 @@ export default function NewStudentPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Prénom</label>
+                                <label className="text-sm font-medium text-slate-700">
+                                    Prénom<span className="text-red-500">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     name="firstName"
+                                    required
                                     placeholder="Ex: Mohamed"
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom</label>
+                                <label className="text-sm font-medium text-slate-700">
+                                    Nom<span className="text-red-500">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     name="lastName"
+                                    required
                                     placeholder="Ex: Ben Ali"
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
@@ -225,7 +267,7 @@ export default function NewStudentPage() {
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                 <input
                                     type="text"
-                                    name="idenelev" // Placeholder mapping logic
+                                    name="idenelev"
                                     placeholder="Ex: ELE001"
                                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
@@ -261,6 +303,9 @@ export default function NewStudentPage() {
                     </div>
 
                     <div className="flex items-center justify-end gap-4">
+                        <p className="mr-auto text-xs text-slate-400">
+                            Les champs marqués d&apos;un <span className="text-red-500">*</span> sont obligatoires.
+                        </p>
                         <button
                             type="button"
                             onClick={() => router.back()}

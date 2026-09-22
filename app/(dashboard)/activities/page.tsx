@@ -1,175 +1,242 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Plus, Filter, Eye, Trash2, Loader2, Activity, User } from "lucide-react";
-import Link from "next/link";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Filter, Loader2, Activity as ActivityIcon, User, CalendarDays, X } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface Activity {
+interface ActivityItem {
     id: number;
-    nameUser: string;
-    description: string;
+    nameUser: string | null;
+    description: string | null;
     dateActivity: string;
 }
 
-export default function StudentsPage() {
-    const currentYear = (() => {
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    return year.toString();
-                })  ();
+// Cle du jour en heure locale, ex : 2026-09-16
+const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    const [activities, setActivities] = useState<Activity[]>([]);
+const formatHeure = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+const libelleJour = (key: string) => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (key === dayKey(today)) return "Aujourd'hui";
+    if (key === dayKey(yesterday)) return "Hier";
+    const [y, m, d] = key.split("-").map(Number);
+    const label = new Date(y, m - 1, d).toLocaleDateString("fr-FR", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+    });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
+const couleur = (description: string) => {
+    if (description.includes("supprimé")) return "text-red-500";
+    if (description.includes("modifié")) return "text-yellow-600";
+    return "text-slate-700";
+};
+
+export default function ActivitiesPage() {
+    const currentYear = String(new Date().getFullYear());
+
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedAS, setSelectedAS] = useState(currentYear);
-    const [anneeScolaires, setAnneeScolaires] = useState<string[]>([]);
+    const [selectedYear, setSelectedYear] = useState(currentYear);
+    const [selectedDate, setSelectedDate] = useState(""); // vide = pas de filtre par jour
+    const [years, setYears] = useState<string[]>([currentYear]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    
-
+    // Annees disponibles, chargees une seule fois
     useEffect(() => {
-        fetchData();
+        fetch("/api/activities/all?years=1")
+            .then((res) => (res.ok ? res.json() : []))
+            .then((data: string[]) => {
+                const all = Array.from(new Set([currentYear, ...data])).sort((a, b) => b.localeCompare(a));
+                setYears(all);
+            })
+            .catch(() => {});
     }, []);
 
-    const fetchData = async () => {
-        try {
-            const [activitiesRes] = await Promise.all([
-                fetch('/api/activities/all'),
-            ]);
+    // Chargement : le jour choisi, sinon l'annee choisie
+    useEffect(() => {
+        const load = async () => {
+            setIsLoading(true);
+            setError(null);
 
-            if (activitiesRes.ok) {
-                console.log("Fetched activities successfully");
-                const activitiesData = await activitiesRes.json();
-                setActivities(activitiesData);
-
-                const yearsInDB = Array.from(new Set(activitiesData.map((e: any) => new Date(e.dateActivity).getFullYear().toString()))).filter(Boolean) as string[];
-                const allYears = Array.from(new Set([currentYear, ...yearsInDB])).sort((a, b) => b.localeCompare(a));
-                setAnneeScolaires(allYears);
-
+            let from: Date;
+            let to: Date;
+            if (selectedDate) {
+                const [y, m, d] = selectedDate.split("-").map(Number);
+                from = new Date(y, m - 1, d);
+                to = new Date(y, m - 1, d + 1);
+            } else {
+                const y = Number(selectedYear);
+                from = new Date(y, 0, 1);
+                to = new Date(y + 1, 0, 1);
             }
-        } catch (error) {
-            console.error("Failed to fetch data", error);        
-        } finally {
-            setIsLoading(false);
+
+            try {
+                const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+                const res = await fetch(`/api/activities/all?${params}`);
+                if (!res.ok) throw new Error();
+                setActivities(await res.json());
+            } catch {
+                setError("Impossible de charger les activités.");
+                setActivities([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+    }, [selectedDate, selectedYear]);
+
+    // Filtre par utilisateur, puis regroupement par jour (deja trie par l API)
+    const groupes = useMemo(() => {
+        const term = searchTerm.toLowerCase();
+        const map = new Map<string, ActivityItem[]>();
+        for (const a of activities) {
+            if (term && !(a.nameUser ?? "").toLowerCase().includes(term)) continue;
+            const key = dayKey(new Date(a.dateActivity));
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(a);
         }
-    };
-
-
-    const filteredActivities = activities.filter(activity => {
-        const matchesSearch = `${activity.nameUser}`.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesAS = selectedAS ? new Date(activity.dateActivity).getFullYear().toString() === selectedAS : true;
-        return matchesSearch && matchesAS;
-    });
-
-    if (isLoading) {
-        return (
-            <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            </div>
-        );
-    }
+        return Array.from(map.entries());
+    }, [activities, searchTerm]);
 
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Activitées Récentes</h1>
-                    <p className="text-slate-500 mt-1">Voir la liste des activitées.</p>
-                </div>
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900">Activités récentes</h1>
+                <p className="text-slate-500 mt-1">Historique des actions, jour par jour.</p>
             </div>
 
-            {/* Filters & Search */}
+            {/* Filtres */}
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-                {/* Nom Parent Search Bar */}
+                {/* Recherche par utilisateur */}
                 <div className="relative flex-1 w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Rechercher une activité par utilisateur..."
+                        placeholder="Rechercher par utilisateur..."
                         className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-slate-700 font-medium"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {/* Annee Scolaire Filter */}
+
                 <div className="flex gap-2 w-full md:w-auto">
+                    {/* Jour precis */}
+                    <div className="relative flex-1 md:flex-none">
+                        <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 pointer-events-none" />
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            max={dayKey(new Date())}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="w-full pl-10 pr-3 py-2 bg-slate-50 text-slate-600 rounded-xl font-medium border border-slate-200/50 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                        />
+                    </div>
+                    {selectedDate && (
+                        <button
+                            type="button"
+                            onClick={() => setSelectedDate("")}
+                            title="Effacer la date"
+                            className="p-2 rounded-xl bg-slate-50 border border-slate-200/50 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {/* Annee */}
                     <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <select
-                        value={selectedAS}
-                        name="dateActivity"
-                        onChange={(e) => setSelectedAS(e.target.value)}
-                        className="appearance-none pl-10 pr-8 py-2 bg-slate-50 text-slate-600 rounded-xl font-medium hover:bg-slate-100 border border-slate-200/50 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
-                    >
-
-                        {
-                            anneeScolaires.map((as, index) => <option key={index} value={as}>{as}</option>)
-                        }
-                    </select>
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 pointer-events-none" />
+                        <select
+                            value={selectedYear}
+                            disabled={!!selectedDate}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="appearance-none pl-10 pr-8 py-2 bg-slate-50 text-slate-600 rounded-xl font-medium hover:bg-slate-100 border border-slate-200/50 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {years.map((y) => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        {/* Entete tableau */}
-                        <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                                <th className="p-4 text-xs font-semibold uppercase text-slate-500 tracking-wider">Utilisateur</th>
-                                <th className="p-4 text-xs font-semibold uppercase text-slate-500 tracking-wider">Description</th>
-                                <th className="p-4 text-xs font-semibold uppercase text-slate-500 tracking-wider">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredActivities.map((activity, index) => {
+            {error && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
+                    {error}
+                </div>
+            )}
 
-                                return (
-                                    <motion.tr
-                                        key={activity.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        className={`hover:bg-slate-50/80 transition-colors group  ${activity.description.includes("supprimé") ? "text-red-500" : activity.description.includes("modifié") ? "text-yellow-500" : ""}`}
-                                    >
-                                        {/* User */}
-                                        <td className="p-4">
-                                            {activity.nameUser ? (
-                                                <div className="flex justify-left items-start">
-                                                    <div className="p-1.5 bg-slate-100 rounded-full group-hover/parent:bg-indigo-100 transition-colors">
-                                                        <User className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <span className="text-sm font-medium mx-6">{activity.nameUser}</span>
+            {/* Liste par jour */}
+            {isLoading ? (
+                <div className="flex h-64 items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                </div>
+            ) : groupes.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-100">
+                    <ActivityIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p>
+                        {selectedDate
+                            ? "Aucune activité ce jour-là."
+                            : "Aucune activité trouvée."}
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {groupes.map(([key, list], gi) => (
+                        <motion.section
+                            key={key}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(gi, 8) * 0.05 }}
+                            className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        >
+                            {/* En-tete du jour */}
+                            <div className="flex items-center justify-between px-5 py-3 bg-slate-50/70 border-b border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <CalendarDays className="w-4 h-4 text-indigo-500" />
+                                    <h2 className="font-bold text-slate-800">{libelleJour(key)}</h2>
+                                </div>
+                                <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-full">
+                                    {list.length} {list.length > 1 ? "activités" : "activité"}
+                                </span>
+                            </div>
+
+                            {/* Activites du jour */}
+                            <ul className="divide-y divide-slate-50">
+                                {list.map((a) => {
+                                    const d = new Date(a.dateActivity);
+                                    return (
+                                        <li
+                                            key={a.id}
+                                            className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 px-5 py-3 hover:bg-slate-50/80 transition-colors ${couleur(a.description ?? "")}`}
+                                        >
+                                            <span className="text-sm font-mono font-semibold sm:w-12 shrink-0 sm:pt-0.5">
+                                                {formatHeure(d)}
+                                            </span>
+                                            <div className="flex items-center gap-2 sm:w-44 shrink-0">
+                                                <div className="p-1.5 bg-slate-100 rounded-full">
+                                                    <User className="w-3.5 h-3.5" />
                                                 </div>
-                                            ) : (
-                                                <span className="text-slate-400 text-sm">Non assigné</span>
-                                            )}
-                                        </td>
-                                        {/* Description */}
-                                        <td className="p-4">
-                                            <span className="text-sm font-medium">{activity.description}</span>
-                                        </td>
-                                        {/* Date    */}
-                                        <td className="p-4">
-                                            <span className="text-sm font-medium">{new Date(activity.dateActivity).toLocaleDateString("fr-FR")} à {new Date(activity.dateActivity).getHours()}:{new Date(activity.dateActivity).getMinutes().toString().padStart(2, '0')}</span>
-                                        </td>
-                                    </motion.tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                                <span className="text-sm font-semibold truncate">
+                                                    {a.nameUser || "Non assigné"}
+                                                </span>
+                                            </div>
+                                            <span className="text-sm font-medium flex-1">{a.description}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </motion.section>
+                    ))}
                 </div>
-                {filteredActivities.length === 0 && (
-                    <div className="p-12 text-center text-slate-400 bg-slate-50/50">
-                        <Activity className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p>Aucune activité trouvée.</p>
-                    </div>
-                )}
-            </div>
+            )}
         </div>
     );
 }
-
-

@@ -126,3 +126,61 @@
 @utility glass-card {
   @apply bg-white/50 backdrop-blur-md border border-white/20 shadow-xl dark:bg-white/5 dark:border-white/10;
 }
+ 
+@layer base {
+  /* Le double-tap ne sélectionne plus le texte des boutons et libellés.
+     Les champs de saisie gardent la sélection, elle y est utile. */
+  button,
+  [role="button"],
+  label,
+  th,
+  .select-none {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+ 
+  /* Pas de rectangle gris au toucher, comme dans une application native */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+ 
+  /* Défilement fluide à l'intérieur des tableaux et des listes */
+  .overflow-x-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+ 
+/* Cibles tactiles confortables : 44 px est la taille minimale
+   recommandée pour être atteinte sans erreur avec le doigt. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  select,
+  a.btn {
+    min-height: 44px;
+  }
+ 
+  /* Les petits boutons d'action (corbeille, oeil) restent carrés */
+  button.p-2 {
+    min-width: 44px;
+  }
+ 
+  /* iOS zoome sur les champs dont la police est sous 16 px */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+ 
+/* En mode application installée, on occupe toute la hauteur
+   y compris sous la barre système. */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+ 

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Plus, MoreVertical } from "lucide-react";
+import { BookOpen, Plus, MoreVertical, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,10 @@ interface Subject {
     id: number;
     name: string;
     codematiere: string;
-    teachers: any[]; // Depending on what's returned, or just array of objects
+    hoursLevel1: number | null;
+    hoursLevel2: number | null;
+    hoursLevel3: number | null;
+    teachers: any[];
 }
 
 const COLORS = [
@@ -30,8 +33,7 @@ export default function SubjectsPage() {
                 const res = await fetch('/api/subjects');
                 if (!res.ok) throw new Error('Failed to fetch subjects');
                 const data = await res.json();
-                //data.teachers = await fetch('/api/teachers');
-                setSubjects(data);
+                setSubjects(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Error fetching subjects:", error);
             } finally {
@@ -46,13 +48,18 @@ export default function SubjectsPage() {
         return <div className="p-8 text-center text-slate-500">Chargement des matières...</div>;
     }
 
+    // Matières dont aucun volume horaire n'est renseigné
+    const sansHoraire = subjects.filter(
+        s => !s.hoursLevel1 && !s.hoursLevel2 && !s.hoursLevel3
+    ).length;
+
     return (
         <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Matières</h1>
-                    <p className="text-slate-500 mt-1">Programme scolaire et coefficients.</p>
+                    <p className="text-slate-500 mt-1">Programme scolaire et volumes horaires.</p>
                 </div>
                 <Link href="/subjects/new" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all active:scale-95">
                     <Plus className="w-5 h-5" />
@@ -60,15 +67,39 @@ export default function SubjectsPage() {
                 </Link>
             </div>
 
+            {/* Matières à compléter */}
+            {sansHoraire > 0 && (
+                <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-bold text-amber-800 text-sm">
+                            {sansHoraire} matière(s) sans volume horaire
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                            Ouvrez chaque matière signalée en orange pour indiquer ses heures par semaine.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {subjects.map((subject, index) => {
-                    // Assign a color based on index or ID to keep it somewhat consistent
-                    // Using index % COLORS.length ensures we cycle through colors
                     const color = COLORS[index % COLORS.length];
                     const teacherCount = subject.teachers ? subject.teachers.length : 0;
+                    const niveaux = [
+                        { court: "7ème", h: subject.hoursLevel1 },
+                        { court: "8ème", h: subject.hoursLevel2 },
+                        { court: "9ème", h: subject.hoursLevel3 },
+                    ];
+                    const aDesHoraires = niveaux.some(n => n.h);
 
                     return (
-                        <div key={subject.id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:shadow-lg hover:border-indigo-100 transition-all">
+                        <div
+                            key={subject.id}
+                            className={`group bg-white rounded-2xl border shadow-sm p-6 hover:shadow-lg transition-all ${
+                                aDesHoraires ? "border-slate-100 hover:border-indigo-100" : "border-amber-200"
+                            }`}
+                        >
                             <div className="flex justify-between items-start">
                                 <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center text-white shadow-md`}>
                                     <BookOpen className="w-6 h-6" />
@@ -82,7 +113,37 @@ export default function SubjectsPage() {
                                 <h3 className="text-lg font-bold text-slate-900 mt-4 hover:text-indigo-600 transition-colors">{subject.name}</h3>
                             </Link>
 
-                            <div className="mt-2 flex items-center justify-between text-sm">
+                            {/* Volume horaire par niveau */}
+                            <div className="mt-3 pb-3 border-b border-slate-50">
+                                {aDesHoraires ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        {niveaux.map(n => (
+                                            <span
+                                                key={n.court}
+                                                className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                                                    n.h
+                                                        ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                                                        : "bg-slate-50 text-slate-300 border-slate-100"
+                                                }`}
+                                                title={n.h ? `${n.court} : ${n.h} h par semaine` : `Non enseignée en ${n.court}`}
+                                            >
+                                                {n.court} {n.h ? `${n.h}h` : "—"}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <Link
+                                        href={`/subjects/${subject.id}`}
+                                        className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:underline"
+                                    >
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        Volume horaire à renseigner
+                                    </Link>
+                                )}
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between text-sm">
                                 <span className="text-slate-500 font-medium">Enseignants</span>
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-slate-700">{teacherCount}</span>

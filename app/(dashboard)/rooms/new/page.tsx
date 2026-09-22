@@ -9,7 +9,7 @@ export default function NewRoomPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
 
@@ -18,16 +18,20 @@ export default function NewRoomPage() {
         try {
             const res = await fetch("/api/rooms", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: formData.get("name"), type: formData.get("type"), capacity: formData.get("capacity"), status: formData.get("status") }),
             });
 
-            if (!res.ok) throw new Error("Erreur lors de la création");
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error);
+            }
 
             router.push("/rooms");
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Une erreur est survenue.");
+            alert(error?.message ?? "Une erreur est survenue.");
         } finally {
             setIsLoading(false);
         }

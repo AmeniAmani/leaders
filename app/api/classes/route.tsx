@@ -2,6 +2,14 @@ import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
 
+// Libellé arabe d'une classe, utilisé dans le journal d'activité
+function libelleClasse(level: string | null, name: string | null) {
+    if (level === "1") return "السابعة أساسي " + name
+    if (level === "2") return "الثامنة أساسي " + name
+    if (level === "3") return "التاسعة أساسي " + name
+    return String(name ?? "")
+}
+
 export async function GET() {
     const classes = await prisma.class.findMany({
         orderBy: [
@@ -15,7 +23,8 @@ export async function GET() {
         include: {
             teachers: true,
             students: true,
-            schedules: true
+            schedules: true,
+            room: true
         }
     })
     return NextResponse.json(classes)
@@ -24,6 +33,16 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const json = await request.json()
+
+        // Salle obligatoire
+        if (!json.roomId) {
+            return NextResponse.json({ error: "La salle est obligatoire" }, { status: 400 })
+        }
+        const roomId = Number(json.roomId)
+        if (isNaN(roomId)) {
+            return NextResponse.json({ error: "Salle invalide" }, { status: 400 })
+        }
+
         const classes = await prisma.class.findFirst({
             where: {
                 level: json.level,
@@ -33,17 +52,30 @@ export async function POST(request: Request) {
         if (classes) {
             return NextResponse.json({ error: "Classe déjà existante" }, { status: 400 })
         }
+
+        // Une salle ne peut être attribuée qu'à une seule classe
+        const salleOccupee = await prisma.class.findFirst({
+            where: { roomId }
+        })
+        if (salleOccupee) {
+            return NextResponse.json(
+                { error: `Cette salle est déjà attribuée à la classe ${libelleClasse(salleOccupee.level, salleOccupee.name)}` },
+                { status: 400 }
+            )
+        }
+
         const newClass = await prisma.class.create({
             data: {
-                name: json.name, //(json.level === "1") ? "السابعة أساسي " + json.name : (json.level === "2") ? "الثامنة أساسي " + json.name : "التاسعة أساسي " + json.name,
+                name: json.name,
                 level: json.level,
-                //codeclass: json.codeclass
+                codeclass: json.codeclass || null,
+                roomId: roomId
             }
         })
         // 1. Log Activity
         const cookiesStore = cookies();
-        const name = String((await cookiesStore).get('user-name')?.value);
-        const namecl = (newClass.level === "1") ? "السابعة أساسي " + newClass.name : (newClass.level === "2") ? "الثامنة أساسي " + newClass.name : (newClass.level === "3") ? "التاسعة أساسي " + newClass.name : ""
+        const name = (await cookiesStore).get('user-name')?.value ?? "inconnu";
+        const namecl = libelleClasse(newClass.level, newClass.name)
         await prisma.activity.create({
             data: {
                 nameUser: name,

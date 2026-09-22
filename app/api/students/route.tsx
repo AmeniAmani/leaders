@@ -4,8 +4,35 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { cookies } from 'next/headers';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const teacherIdStr = searchParams.get('teacherId');
+
+    const where: any = {};
+
+    // Filtrage par enseignant : on ne renvoie que les élèves de ses classes.
+    // Un enseignant sans classe assignée ne voit aucun élève.
+    if (teacherIdStr) {
+        const teacherId = Number(teacherIdStr);
+        if (isNaN(teacherId)) {
+            return NextResponse.json([]);
+        }
+
+        const teacher = await prisma.teacher.findUnique({
+            where: { id: teacherId },
+            select: { classes: { select: { id: true } } }
+        });
+
+        const classIds = teacher?.classes.map((c) => c.id) ?? [];
+        if (classIds.length === 0) {
+            return NextResponse.json([]);
+        }
+
+        where.classId = { in: classIds };
+    }
+
     const students = await prisma.student.findMany({
+        where,
         include: {
             classe: true,
             parent: true
@@ -32,6 +59,20 @@ export async function POST(request: Request) {
         const phone = formData.get('phone') as string
         const gender = formData.get('gender') as string
 
+        // Champs obligatoires
+        if (!firstName || !firstName.trim()) {
+            return NextResponse.json({ error: "Le prénom de l'élève est obligatoire" }, { status: 400 })
+        }
+        if (!lastName || !lastName.trim()) {
+            return NextResponse.json({ error: "Le nom de l'élève est obligatoire" }, { status: 400 })
+        }
+        if (!classId) {
+            return NextResponse.json({ error: "La classe est obligatoire" }, { status: 400 })
+        }
+        if (!parentId) {
+            return NextResponse.json({ error: "Le parent ou tuteur est obligatoire" }, { status: 400 })
+        }
+
         let photoName = null;
         if (!file || file.size === 0) {
             if (gender === 'f') {
@@ -56,22 +97,10 @@ export async function POST(request: Request) {
                 gender: gender
             }
         })
-        
+
         // 1. Log Activity
         const cookiesStore = cookies();
         const name= String((await cookiesStore).get('user-name')?.value);
-        /*const role= String((await cookiesStore).get('user-role')?.value);
-        if(role==="prof"){
-            const user= await prisma.user.findFirst({
-                where:{login:name}
-            });
-            if(user?.idTeach) {
-                const teacher= await prisma.teacher.findUnique({
-                    where:{id:user.idTeach}
-                });
-                name=teacher?.name? teacher.name : name;
-            }
-        }*/
         await prisma.activity.create({
             data: {
                 nameUser: name,

@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
-import { notifyParentsOfStudent } from '../../../lib/notifications';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -26,6 +25,7 @@ export async function GET(request: Request) {
         return NextResponse.json(absences);
     }
 
+    // Année scolaire en cours : de septembre à juin
     const month = new Date().getMonth() + 1;
     let date1 = "";
     let date2 = "";
@@ -65,33 +65,29 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const json = await request.json()
+
+        // L'absence est créée en attente : c'est l'administration qui l'envoie
+        // au parent depuis la page Absences.
         const newabsence = await prisma.absence.create({
             data: {
                 studentId: Number(json.studentId),
                 classId: Number(json.classId),
                 dateAbsence: new Date(json.dateAbsence),
                 hour: json.hour,
+                hourEnd: json.hourEnd || null,
                 teacherId: json.teacherId ? Number(json.teacherId) : null,
-                //codeabsence: json.codeabsence
+                validated: false,
             }
         })
 
-        // Send notification to parent
-        const formattedDate = new Date(json.dateAbsence).toLocaleDateString('fr-FR');
-        await notifyParentsOfStudent(
-            Number(json.studentId),
-            "Nouvelle absence",
-            `Votre enfant a été marqué absent le ${formattedDate} à ${json.hour}.`,
-            "absence"
-        );
-        // 1. Log Activity
+        // Journal d'activité
         const cookiesStore = cookies();
-        const name = String((await cookiesStore).get('user-name')?.value);
+        const name = String((await cookiesStore).get('user-name')?.value || "Inconnu");
         const namestud = json.studentName;
         await prisma.activity.create({
             data: {
                 nameUser: name,
-                description: `a ajouter l'absence de l'élève: ${namestud}`,
+                description: `a ajouté l'absence de l'élève: ${namestud}`,
             }
         });
         return NextResponse.json(newabsence)

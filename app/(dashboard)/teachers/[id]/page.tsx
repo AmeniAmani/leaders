@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import { ChevronLeft, Save, Upload, User, Mail, Phone, BookOpen, Trash2, GraduationCap, X, Loader2 } from "lucide-react";
+import { ChevronLeft, Save, Upload, User, Mail, Phone, BookOpen, Trash2, GraduationCap, X, Loader2, School, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,14 +11,48 @@ interface Subject {
     name: string;
 }
 
+interface ClassTeacher {
+    id: number;
+    name: string | null;
+    subjectId: number | null;
+}
+
+interface ClassItem {
+    id: number;
+    name: string | null;
+    level: string | null;
+    teachers: ClassTeacher[];
+}
+
+// Libellé arabe d'une classe (même logique que le reste de l'application)
+const classLabel = (c: { level: string | null; name: string | null }) => {
+    const prefix =
+        c.level === "1" ? "السابعة أساسي " :
+        c.level === "2" ? "الثامنة أساسي " :
+        c.level === "3" ? "التاسعة أساسي " : "";
+    return prefix + (c.name || "");
+};
+
 export default function TeacherDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const unwrappedParams = use(params);
+    const teacherId = Number(unwrappedParams.id);
+
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [teacher, setTeacher] = useState<any>(null);
-    const [user, setUser] = useState<any>(null); // To store linked user info
+    const [user, setUser] = useState<any>(null);
     const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+
+    // Matière et classes sélectionnées
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+    const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
+
+    // Sélection des classes dans une fenêtre dédiée
+    const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+    const [draftClassIds, setDraftClassIds] = useState<number[]>([]);
 
     // Modal State
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -28,18 +62,19 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
     const [isResetting, setIsResetting] = useState(false);
 
     useEffect(() => {
-        const fetchSubjects = async () => {
+        const fetchRefs = async () => {
             try {
-                const res = await fetch('/api/subjects');
-                if (res.ok) {
-                    const data = await res.json();
-                    setSubjects(data);
-                }
+                const [subjectsRes, classesRes] = await Promise.all([
+                    fetch("/api/subjects"),
+                    fetch("/api/classes"),
+                ]);
+                if (subjectsRes.ok) setSubjects(await subjectsRes.json());
+                if (classesRes.ok) setClasses(await classesRes.json());
             } catch (error) {
-                console.error("Error fetching subjects:", error);
+                console.error("Error fetching refs:", error);
             }
         };
-        fetchSubjects();
+        fetchRefs();
     }, []);
 
     useEffect(() => {
@@ -52,9 +87,11 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
             if (!res.ok) throw new Error("Failed to fetch teacher");
             const data = await res.json();
             setTeacher(data);
-            if (data.user) {
-                setUser(data.user);
-            }
+            if (data.user) setUser(data.user);
+
+            // Pré-remplir matière et classes actuelles
+            setSelectedSubjectId(data.subjectId ? String(data.subjectId) : "");
+            setSelectedClassIds(Array.isArray(data.classes) ? data.classes.map((c: any) => c.id) : []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -64,35 +101,107 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
 
     const getCookie = (name: string) => {
         if (typeof document === "undefined") return null;
-
         return document.cookie
             .split("; ")
             .find(row => row.startsWith(name + "="))
             ?.split("=")[1] ?? null;
-        };
+    };
 
     const [role, setRole] = useState('');
 
     useEffect(() => {
-            setRole(getCookie("user-role") ?? "N/A");
-        }, []);
+        setRole(getCookie("user-role") ?? "N/A");
+    }, []);
     let isReadOnly = role !== 'admin';
+
+    // Autre enseignant de la même matière déjà rattaché à cette classe.
+    // L'enseignant en cours de modification ne peut pas être en conflit avec lui-même.
+    const conflictFor = (cls: ClassItem): ClassTeacher | null => {
+        if (!selectedSubjectId) return null;
+        const sid = Number(selectedSubjectId);
+        return cls.teachers?.find((t) => t.subjectId === sid && t.id !== teacherId) || null;
+    };
+
+    const subjectName = subjects.find((s) => String(s.id) === selectedSubjectId)?.name || "cette matière";
+
+    // Ouvrir la fenêtre de sélection : on repart de la sélection courante
+    const openClassModal = () => {
+        if (isReadOnly) return;
+        setDraftClassIds(selectedClassIds);
+        setIsClassModalOpen(true);
+    };
+
+    // Cocher / décocher dans la fenêtre (sans confirmation : elle vient à l'enregistrement)
+    const toggleDraftClass = (cls: ClassItem) => {
+        setDraftClassIds((prev) =>
+            prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
+        );
+    };
+
+    // Valider la fenêtre : une seule confirmation récapitulative s'il y a des remplacements
+    const confirmClassSelection = () => {
+        const remplacements = classes
+            .filter((c) => draftClassIds.includes(c.id))
+            .map((c) => ({ cls: c, conflict: conflictFor(c) }))
+            .filter((x) => x.conflict);
+
+        if (remplacements.length > 0) {
+            const lignes = remplacements
+                .map((x) => `• ${classLabel(x.cls)} — ${x.conflict!.name || "un enseignant"}`)
+                .join("\n");
+            const ok = window.confirm(
+                `Ces classes ont déjà un enseignant en ${subjectName} :\n\n${lignes}\n\n` +
+                `Voulez-vous les remplacer ? La classe leur sera retirée.`
+            );
+            if (!ok) return;
+        }
+
+        setSelectedClassIds(draftClassIds);
+        setIsClassModalOpen(false);
+    };
+
+    // Changer de matière invalide les classes déjà cochées
+    const handleSubjectChange = (value: string) => {
+        setSelectedSubjectId(value);
+        if (selectedClassIds.length > 0) setSelectedClassIds([]);
+    };
+
+    const submitForm = async (formData: FormData, confirmReplace: boolean): Promise<boolean> => {
+        if (confirmReplace) formData.set("confirmReplace", "1");
+
+        const res = await fetch(`/api/teachers/${unwrappedParams.id}`, {
+            method: "PUT",
+            body: formData,
+        });
+
+        // 409 : le serveur a détecté un conflit non confirmé
+        if (res.status === 409) {
+            const data = await res.json();
+            const lignes = (data.conflicts || [])
+                .map((c: any) => `• ${c.className} — ${c.teacherName} (${c.subjectName})`)
+                .join("\n");
+            const ok = window.confirm(
+                `Ces classes ont déjà un enseignant dans la même matière :\n\n${lignes}\n\n` +
+                `Voulez-vous les remplacer ?`
+            );
+            if (!ok) return false;
+            return submitForm(formData, true);
+        }
+
+        if (!res.ok) throw new Error("Failed to update teacher");
+        return true;
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
 
         const formData = new FormData(e.currentTarget);
-
-        // Subject ID is already in formData as 'subjectId'
+        formData.set("classIds", JSON.stringify(selectedClassIds));
 
         try {
-            const res = await fetch(`/api/teachers/${unwrappedParams.id}`, {
-                method: "PUT",
-                body: formData,
-            });
-
-            if (!res.ok) throw new Error("Failed to update teacher");
+            const done = await submitForm(formData, false);
+            if (!done) return;
 
             router.push("/teachers");
             router.refresh();
@@ -101,6 +210,39 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
             alert("Erreur lors de la mise à jour");
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        const nom = teacher?.name || "cet enseignant";
+
+        if (!window.confirm(
+            `Supprimer définitivement ${nom} ?\n\n` +
+            `Son compte de connexion sera supprimé et ses classes lui seront retirées. ` +
+            `Les absences et devoirs qu'il a saisis restent en base.`
+        )) return;
+
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/teachers/${unwrappedParams.id}`, { method: "DELETE" });
+            if (!res.ok) {
+                let message = "Erreur lors de la suppression";
+                try {
+                    const data = await res.json();
+                    if (data?.error) message = data.error;
+                } catch {
+                    // réponse non JSON : on garde le message générique
+                }
+                throw new Error(message);
+            }
+
+            router.push("/teachers");
+            router.refresh();
+        } catch (err: any) {
+            console.error(err);
+            alert(err?.message || "Une erreur est survenue lors de la suppression.");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -158,20 +300,22 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                         <p className="text-slate-500 text-sm">ID: {teacher.id}</p>
                     </div>
                 </div>
-                {/* Delete button (placeholder for now) */}
-                {!isReadOnly && <button className="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 hover:text-red-700 transition-colors flex items-center gap-2">
-                    <Trash2 className="w-4 h-4" />
+                {!isReadOnly && <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 hover:text-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     Supprimer
                 </button>}
             </div>
-
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column: Photo & Info */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center">
                         <div className="w-32 h-32 mx-auto bg-slate-50 rounded-full flex items-center justify-center overflow-hidden border-2 border-slate-200 mb-4 cursor-pointer group relative">
-                            {/* Placeholder image logic */}
                             {teacher.photo ? (
                                 <img src={`../${teacher.photo}`} alt={teacher.name || "Teacher"} className="w-full h-full object-cover" />
                             ) : (
@@ -194,18 +338,16 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                             Informations Personnelles
                         </h3>
 
-                        
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom Complet</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    readOnly={isReadOnly}
-                                    defaultValue={teacher.name || ""}
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
-                                />
-                            </div>
-                            
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Nom Complet</label>
+                            <input
+                                type="text"
+                                name="name"
+                                readOnly={isReadOnly}
+                                defaultValue={teacher.name || ""}
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                            />
+                        </div>
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -228,7 +370,8 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                                     <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                     <select
                                         name="subjectId"
-                                        defaultValue={teacher.subjectId || ""}
+                                        value={selectedSubjectId}
+                                        onChange={(e) => handleSubjectChange(e.target.value)}
                                         disabled={isReadOnly}
                                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
                                     >
@@ -264,6 +407,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                                     <input
                                         type="tel"
                                         name="phone"
+                                        readOnly={isReadOnly}
                                         defaultValue={teacher.phone || ""}
                                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
                                     />
@@ -300,6 +444,54 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
                     </div>
 
+                    {/* ===== Classes enseignées ===== */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                    <School className="w-5 h-5 text-emerald-500" />
+                                    Classes enseignées
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Les classes dans lesquelles cet enseignant intervient.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={openClassModal}
+                                disabled={!selectedSubjectId || isReadOnly}
+                                className="shrink-0 px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-medium text-sm hover:bg-emerald-100 border border-emerald-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <School className="w-4 h-4" />
+                                {selectedClassIds.length > 0 ? "Modifier les classes" : "Sélectionner les classes"}
+                            </button>
+                        </div>
+
+                        {!selectedSubjectId ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+                                <AlertTriangle className="w-5 h-5 shrink-0" />
+                                Choisissez d&apos;abord la matière principale pour pouvoir sélectionner les classes.
+                            </div>
+                        ) : selectedClassIds.length === 0 ? (
+                            <p className="text-sm text-slate-400 italic py-2">
+                                Aucune classe sélectionnée pour le moment.
+                            </p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {classes
+                                    .filter((c) => selectedClassIds.includes(c.id))
+                                    .map((c) => (
+                                        <span
+                                            key={c.id}
+                                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-200"
+                                        >
+                                            {classLabel(c)}
+                                        </span>
+                                    ))}
+                            </div>
+                        )}
+                    </div>
+
                     {!isReadOnly && <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-slate-900 flex items-center gap-2">
@@ -310,11 +502,11 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom d'utilisateur</label>
+                                <label className="text-sm font-medium text-slate-700">Nom d&apos;utilisateur</label>
                                 <input
                                     type="text"
                                     defaultValue={user?.login || ""}
-                                    readOnly // Login usually shouldn't change easily or needs specific logic
+                                    readOnly
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-slate-500 cursor-not-allowed text-sm"
                                 />
                             </div>
@@ -358,6 +550,125 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                     </div>}
                 </div>
             </form>
+
+
+            {/* Fenêtre de sélection des classes */}
+            <AnimatePresence>
+                {isClassModalOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+                            onClick={() => setIsClassModalOpen(false)}
+                        />
+                        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[85vh]"
+                            >
+                                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-900">Classes enseignées</h2>
+                                        <p className="text-sm text-slate-500">
+                                            Matière : {subjectName}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsClassModalOpen(false)}
+                                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 overflow-y-auto">
+                                    {classes.length === 0 ? (
+                                        <p className="text-sm text-slate-400 italic">Aucune classe disponible.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {classes.map((cls) => {
+                                                const conflict = conflictFor(cls);
+                                                const checked = draftClassIds.includes(cls.id);
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        key={cls.id}
+                                                        onClick={() => toggleDraftClass(cls)}
+                                                        className={`text-left p-3 rounded-xl border-2 transition-all flex items-start gap-3 ${
+                                                            checked
+                                                                ? "border-emerald-500 bg-emerald-50"
+                                                                : conflict
+                                                                ? "border-amber-200 bg-amber-50/50 hover:border-amber-300"
+                                                                : "border-slate-200 bg-slate-50 hover:border-emerald-300"
+                                                        }`}
+                                                    >
+                                                        <span
+                                                            className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                                                                checked ? "bg-emerald-600 border-emerald-600" : "border-slate-300 bg-white"
+                                                            }`}
+                                                        >
+                                                            {checked && (
+                                                                <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                                                    <path
+                                                                        fillRule="evenodd"
+                                                                        d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z"
+                                                                        clipRule="evenodd"
+                                                                    />
+                                                                </svg>
+                                                            )}
+                                                        </span>
+                                                        <span className="min-w-0">
+                                                            <span className="block text-sm font-bold text-slate-800">{classLabel(cls)}</span>
+                                                            {conflict && !checked && (
+                                                                <span className="block text-[11px] font-medium text-amber-700 mt-0.5">
+                                                                    Déjà assurée par {conflict.name || "un enseignant"}
+                                                                </span>
+                                                            )}
+                                                            {conflict && checked && (
+                                                                <span className="block text-[11px] font-bold text-emerald-700 mt-0.5">
+                                                                    Remplacera {conflict.name || "l&apos;enseignant actuel"}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3 shrink-0">
+                                    <span className="text-sm text-slate-500 font-medium">
+                                        {draftClassIds.length} classe(s) sélectionnée(s)
+                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsClassModalOpen(false)}
+                                            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                                        >
+                                            Annuler
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={confirmClassSelection}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+                                        >
+                                            <Save className="w-4 h-4" />
+                                            Enregistrer
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Password Reset Modal */}
             <AnimatePresence>

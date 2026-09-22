@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import { ChevronLeft, Save, Upload, User, Calendar, Mail, Phone, MapPin, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, Save, Upload, User, Calendar, Mail, Phone, MapPin, Trash2, Loader2, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -12,15 +12,17 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
     const [student, setStudent] = useState<any>(null);
     const [classes, setClasses] = useState<any[]>([]);
     const [parents, setParents] = useState<any[]>([]);
+    const [nbDocuments, setNbDocuments] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [studentRes, classesRes, parentsRes] = await Promise.all([
+                const [studentRes, classesRes, parentsRes, docsRes] = await Promise.all([
                     fetch(`/api/students/${unwrappedParams.id}`),
                     fetch('/api/classes'),
-                    fetch('/api/parents')
+                    fetch('/api/parents'),
+                    fetch(`/api/students/${unwrappedParams.id}/documents`)
                 ]);
 
                 if (studentRes.ok && classesRes.ok && parentsRes.ok) {
@@ -32,6 +34,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                     setStudent(s);
                     setClasses(c);
                     setParents(p);
+                }
+
+                if (docsRes.ok) {
+                    const d = await docsRes.json();
+                    setNbDocuments(Array.isArray(d) ? d.length : 0);
                 }
             } catch (error) {
                 console.error("Failed to fetch data", error);
@@ -127,14 +134,28 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                         <p className="text-slate-500 text-sm">ID: {student.idenelev}</p>
                     </div>
                 </div>
-                {!isReadOnly && <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 hover:text-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    Supprimer
-                </button>}
+                <div className="flex items-center gap-3">
+                    <Link
+                        href={`/students/${unwrappedParams.id}/documents`}
+                        className="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 font-medium hover:bg-amber-100 border border-amber-200 transition-colors flex items-center gap-2"
+                    >
+                        <FolderOpen className="w-4 h-4" />
+                        Dossier
+                        {nbDocuments !== null && nbDocuments > 0 && (
+                            <span className="ml-0.5 px-1.5 py-0.5 rounded-md bg-amber-200 text-amber-900 text-xs font-bold">
+                                {nbDocuments}
+                            </span>
+                        )}
+                    </Link>
+                    {!isReadOnly && <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 hover:text-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        Supprimer
+                    </button>}
+                </div>
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -149,7 +170,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Upload className="w-8 h-8 text-white" />
                             </div>
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" disabled={isReadOnly} />
+                            <input type="file" name="photo" className="absolute inset-0 opacity-0 cursor-pointer" disabled={isReadOnly} />
                         </div>
                         <p className="text-sm font-medium text-slate-900">Photo de profil</p>
                         <p className="text-xs text-slate-400 mt-1">JPG, PNG max 2MB</p>

@@ -1,0 +1,47 @@
+{
+  "name": "GSI Collège Les Leaders Boumhel",
+  "short_name": "GSI Leaders",
+  "description": "Espace de gestion scolaire : appel, devoirs, notes et emploi du temps.",
+  "start_url": "/prof",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "lang": "fr",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Faire l'appel",
+      "short_name": "Appel",
+      "description": "Saisir les absences d'une classe",
+      "url": "/absences/new"
+    },
+    {
+      "name": "Emploi du temps",
+      "short_name": "Emploi",
+      "description": "Consulter l'emploi du temps",
+      "url": "/schedule"
+    }
+  ]
+}

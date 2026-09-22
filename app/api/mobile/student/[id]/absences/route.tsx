@@ -16,7 +16,11 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
         }
 
         const absences = await prisma.absence.findMany({
-            where: { studentId: Number(params.id) },
+            where: {
+                studentId: Number(params.id),
+                // Seules les absences envoyées par l'administration sont visibles
+                validated: true,
+            },
             include: {
                 classe: true
             },

@@ -13,7 +13,6 @@ import {
     LogOut,
     UserCheck,
     School,
-    Menu,
     X,
     MapPin,
     CreditCard,
@@ -23,17 +22,13 @@ import {
     NotebookPen,
     LibraryBig,
     MessageSquare,
-    Wand2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "./SidebarContext";
 import { useEffect, useState } from 'react';
 
-
-
 const routes = [
-    // ... (omitted for brevity in replacement, but I will include it properly)
     {
         label: "Tableau de bord",
         icon: LayoutDashboard,
@@ -74,7 +69,7 @@ const routes = [
         icon: UserCheck,
         href: "/teachers",
         color: "text-orange-500",
-        user: ["admin", "prof"]
+        user: ["admin"]
     },
     {
         label: "Absences",
@@ -168,13 +163,35 @@ export const Sidebar = () => {
         setRole(getCookie("user-role") ?? "N/A");
     }, []);
 
+    // Session enseignant : quand le cookie auth-token expire (1 heure),
+    // retour automatique vers la page de connexion enseignant.
+    useEffect(() => {
+        if (role !== "prof") return;
+
+        const verifier = () => {
+            if (!getCookie("auth-token")) {
+                window.location.href = "/prof";
+            }
+        };
+
+        verifier();
+        const timer = setInterval(verifier, 30000);
+        return () => clearInterval(timer);
+    }, [role]);
+
     const handleLogout = (e: React.MouseEvent) => {
         e.preventDefault();
+
+        // On retient l'espace avant d'effacer les cookies
+        const destination = role === "prof" ? "/prof" : "/login";
+
         // Clear all session cookies
         document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "user-name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "user-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        router.push("/login");
+        document.cookie = "user-id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+        router.push(destination);
     };
 
     return (
@@ -188,9 +205,7 @@ export const Sidebar = () => {
                     {/* Logo with close button for mobile */}
                     <div className="px-6 py-4 flex items-center justify-between">
                         <Link href="/dashboard" className="flex items-center gap-x-2">
-                            {/*<div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center">
-                                <School className="text-white w-6 h-6" />
-                            </div>*/}<div className="w-10 h-10 rounded-xl"><img src="/logo.png" alt="Logo" className="w-10 h-10" /></div>
+                            <div className="w-10 h-10 rounded-xl"><img src="/logo.png" alt="Logo" className="w-10 h-10" /></div>
                             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 to-white">
                                 GSI Leaders
                             </h1>

@@ -13,18 +13,43 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
     const [isDeleting, setIsDeleting] = useState(false);
     const [classe, setClasse] = useState<any>(null);
 
+    // Salles disponibles + salle sélectionnée (champ contrôlé)
+    const [rooms, setRooms] = useState<any[]>([]);
+    const [roomId, setRoomId] = useState<string>("");
+
     useEffect(() => {
-        const fetchClass = async () => {
+        const fetchAll = async () => {
             try {
-                const res = await fetch(`/api/classes/${unwrappedParams.id}`);
-                if (res.ok) {
-                    setClasse(await res.json());
+                const [classRes, roomsRes, classesRes] = await Promise.all([
+                    fetch(`/api/classes/${unwrappedParams.id}`),
+                    fetch(`/api/rooms`),
+                    fetch(`/api/classes`),
+                ]);
+
+                if (classRes.ok) {
+                    const current = await classRes.json();
+                    setClasse(current);
+                    setRoomId(current?.roomId ? String(current.roomId) : "");
+                }
+
+                if (roomsRes.ok && classesRes.ok) {
+                    const allRooms = await roomsRes.json();
+                    const allClasses = await classesRes.json();
+
+                    // Salles déjà prises par une AUTRE classe
+                    const takenIds = new Set(
+                        allClasses
+                            .filter((c: any) => c.id !== Number(unwrappedParams.id))
+                            .map((c: any) => c.roomId)
+                            .filter(Boolean)
+                    );
+                    setRooms(allRooms.filter((r: any) => !takenIds.has(r.id)));
                 }
             } catch (error) {
                 console.error("Failed to fetch class", error);
             }
         };
-        fetchClass();
+        fetchAll();
     }, [unwrappedParams.id]);
 
     const getCookie = (name: string) => {
@@ -34,13 +59,13 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
             .split("; ")
             .find(row => row.startsWith(name + "="))
             ?.split("=")[1] ?? null;
-        };
+    };
 
     const [role, setRole] = useState('');
 
     useEffect(() => {
-            setRole(getCookie("user-role") ?? "N/A");
-        }, []);
+        setRole(getCookie("user-role") ?? "N/A");
+    }, []);
     let isReadOnly = role !== 'admin';
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,8 +76,8 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
         const data = {
             name: formData.get("name"),
             level: formData.get("level"),
-            codeclass: formData.get("codeclass")
-            // capacity: Number(formData.get("capacity")) // If added later
+            codeclass: formData.get("codeclass"),
+            roomId: roomId,
         };
 
         try {
@@ -83,7 +108,8 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
             if (res.ok) {
                 router.push("/classes");
             } else {
-                alert("Erreur lors de la suppression");
+                const error = await res.json();
+                alert(error?.error ?? "Erreur lors de la suppression");
             }
         } catch (error) {
             console.error("Failed to delete class", error);
@@ -136,11 +162,11 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">Niveau</label>
-                        <select 
-                        name="level" 
-                        defaultValue={classe.level} 
-                        disabled={isReadOnly}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                        <select
+                            name="level"
+                            defaultValue={classe.level}
+                            disabled={isReadOnly}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                         >
                             <option value="1">السابعة أساسي</option>
                             <option value="2">الثامنة أساسي</option>
@@ -163,10 +189,35 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                         <input
                             name="codeclass"
                             type="text"
-                            defaultValue={classe.codeclass}
+                            defaultValue={classe.codeclass ?? ""}
                             readOnly={isReadOnly}
                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                         />
+                    </div>
+                    {/* Salle attitrée de la classe */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Salle</label>
+                        <select
+                            required
+                            name="roomId"
+                            value={roomId}
+                            onChange={(e) => setRoomId(e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm disabled:opacity-60"
+                        >
+                            <option value="">Sélectionner une salle...</option>
+                            {rooms.map((r) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                        </select>
+                        {!roomId && (
+                            <p className="text-xs text-amber-700 font-medium">
+                                Cette classe n&apos;a pas encore de salle attribuée.
+                            </p>
+                        )}
+                        <p className="text-xs text-slate-400">
+                            Seules les salles libres sont proposées.
+                        </p>
                     </div>
 
                 </div>
@@ -196,7 +247,7 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                             </>
                         )}
                     </button>
-                }
+                    }
                 </div>
             </form>
 

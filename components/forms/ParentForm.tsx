@@ -13,23 +13,33 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsLoading(true);
 
         const formData = new FormData(e.currentTarget);
         const data: any = Object.fromEntries(formData.entries());
         data.active = formData.get("active") === "on";
 
-        if (data.relation1 === data.relation2) {
-            alert("Les relations doivent être différentes.");
-            setIsLoading(false);
-            return;
-        }
-        if (data.password !== data.confirmPassword) {
-            alert("Les mots de passe ne correspondent pas.");
-            setIsLoading(false);
+        // Tuteur 1 : les trois champs sont obligatoires
+        const name1 = String(data.name1 || "").trim();
+        const relation1 = String(data.relation1 || "").trim();
+        const phone1 = String(data.phone1 || "").trim();
+
+        if (!name1) { alert("Le nom complet du tuteur 1 est obligatoire."); return; }
+        if (!relation1) { alert("Indiquez la relation du tuteur 1 avec l'élève."); return; }
+        if (!phone1) { alert("Le téléphone du tuteur 1 est obligatoire."); return; }
+
+        // La relation du tuteur 2 ne se compare que s'il est renseigné
+        const name2 = String(data.name2 || "").trim();
+        if (name2 && data.relation1 === data.relation2) {
+            alert("Les deux tuteurs ne peuvent pas avoir la même relation avec l'élève.");
             return;
         }
 
+        if (data.password !== data.confirmPassword) {
+            alert("Les mots de passe ne correspondent pas.");
+            return;
+        }
+
+        setIsLoading(true);
         try {
             const res = await fetch("/api/parents", {
                 method: "POST",
@@ -37,16 +47,25 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                 body: JSON.stringify(data),
             });
 
-            if (!res.ok) throw new Error("Failed to create parent");
+            if (!res.ok) {
+                let message = "Erreur lors de la création";
+                try {
+                    const erreur = await res.json();
+                    if (erreur?.error) message = erreur.error;
+                } catch {
+                    // réponse non JSON : on garde le message générique
+                }
+                throw new Error(message);
+            }
 
             const newParent = await res.json();
 
             if (onSuccess) {
                 onSuccess(newParent);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Une erreur est survenue lors de la création.");
+            alert(error?.message || "Une erreur est survenue lors de la création.");
         } finally {
             setIsLoading(false);
         }
@@ -57,14 +76,21 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
             <div className="space-y-6">
                 {/** Information Tuteur 1 */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <User className="w-5 h-5 text-pink-500" />
-                        Informations Tuteur 1
-                    </h3>
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                            <User className="w-5 h-5 text-pink-500" />
+                            Informations Tuteur 1
+                        </h3>
+                        <span className="text-xs font-bold text-pink-700 bg-pink-50 border border-pink-200 px-2.5 py-1 rounded-lg">
+                            Contact principal
+                        </span>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Nom Complet</label>
+                            <label className="text-sm font-medium text-slate-700">
+                                Nom Complet<span className="text-red-500">*</span>
+                            </label>
                             <input
                                 type="text"
                                 name="name1"
@@ -74,8 +100,16 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Relation</label>
-                            <select name="relation1" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all text-sm">
+                            <label className="text-sm font-medium text-slate-700">
+                                Relation<span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                name="relation1"
+                                required
+                                defaultValue=""
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all text-sm"
+                            >
+                                <option value="">Sélectionner...</option>
                                 <option value="father">Père</option>
                                 <option value="mother">Mère</option>
                                 <option value="guardian">Tuteur Légal</option>
@@ -97,7 +131,9 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Téléphone</label>
+                            <label className="text-sm font-medium text-slate-700">
+                                Téléphone<span className="text-red-500">*</span>
+                            </label>
                             <div className="relative">
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                 <input
@@ -110,13 +146,22 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                             </div>
                         </div>
                     </div>
+
+                    <p className="text-xs text-slate-400 mt-4">
+                        C&apos;est ce contact que l&apos;établissement appellera en priorité.
+                    </p>
                 </div>
                 {/** Information Tuteur 2 */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <User className="w-5 h-5 text-pink-500" />
-                        Informations Tuteur 2
-                    </h3>
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                            <User className="w-5 h-5 text-slate-400" />
+                            Informations Tuteur 2
+                        </h3>
+                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                            Facultatif
+                        </span>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -130,7 +175,8 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-700">Relation</label>
-                            <select name="relation2" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all text-sm">
+                            <select name="relation2" defaultValue="" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all text-sm">
+                                <option value="">Sélectionner...</option>
                                 <option value="mother">Mère</option>
                                 <option value="father">Père</option>
                                 <option value="guardian">Tuteur Légal</option>
@@ -176,7 +222,7 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                                 <label className="text-sm font-medium text-slate-700">Statut du compte</label>
-                                <p className="text-xs text-slate-500">Désactiver pour bloquer l'accès à l'application mobile</p>
+                                <p className="text-xs text-slate-500">Désactiver pour bloquer l&apos;accès à l&apos;application mobile</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" name="active" defaultChecked className="sr-only peer" />
@@ -185,11 +231,12 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Nom d'utilisateur<span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-slate-700">Nom d&apos;utilisateur<span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 name="username"
                                 required
+                                autoComplete="off"
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                             />
                         </div>
@@ -201,6 +248,7 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                                     type="password"
                                     name="password"
                                     required
+                                    autoComplete="new-password"
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
                             </div>
@@ -210,6 +258,7 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                                     type="password"
                                     name="confirmPassword"
                                     required
+                                    autoComplete="new-password"
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
                             </div>
@@ -218,7 +267,10 @@ export default function ParentForm({ onSuccess, onCancel }: ParentFormProps) {
                 </div>
             </div>
 
-            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+            <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                <p className="mr-auto text-xs text-slate-400">
+                    Les champs marqués d&apos;un <span className="text-red-500">*</span> sont obligatoires.
+                </p>
                 {onCancel && (
                     <button
                         type="button"

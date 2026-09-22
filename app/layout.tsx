@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,26 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GSI College Les Leaders",
   description: "GSI College Les Leaders",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "GSI Leaders",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
+};
+
+// Empêche le zoom accidentel au double-tap sur tablette,
+// tout en laissant le zoom manuel possible pour l'accessibilité.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({

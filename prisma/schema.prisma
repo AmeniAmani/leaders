@@ -38,6 +38,7 @@ model Student {
 
   chats Chat[]
   chatBlocked Boolean? @default(false)
+  documents StudentDocument[]
 }
 
 model Parent {
@@ -55,6 +56,17 @@ model Parent {
   active        Boolean?       @default(true)
   notifications Notification[]
   childrenIds   Student[]
+}
+model StudentDocument {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  name      String
+  fileName  String
+  filePath  String
+  mimeType  String?
+  size      Int?
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
@@ -88,6 +100,7 @@ model Teacher {
   diploma   String?
   subjectId Int?
   absences  Absence[]
+  teacherAbsences TeacherAbsence[]
   planings  Planing[]
   schedules Schedule[]
   subject   Subject?   @relation(fields: [subjectId], references: [id])
@@ -99,6 +112,9 @@ model Class {
   id          Int          @id @default(autoincrement())
   name        String?
   level       String?
+  codeclass   String?
+  roomId      Int?         @unique
+  room        Room?        @relation(fields: [roomId], references: [id])
   absences    Absence[]
   noteDevoirs NoteDevoir[]
   planings    Planing[]
@@ -107,6 +123,7 @@ model Class {
   students    Student[]
   tafs        Taf[]
   teachers    Teacher[]    @relation("ClassToTeacher")
+  teacherAbsences TeacherAbsence[] @relation("TeacherAbsenceToClass")
 
   chats Chat[]
   chatBlocked Boolean? @default(false)
@@ -119,6 +136,7 @@ model Room {
   capacity  Int?
   status    String?
   schedules Schedule[]
+  class     Class?
 }
 
 model Schedule {
@@ -143,6 +161,9 @@ model Subject {
   id          Int          @id @default(autoincrement())
   name        String?
   codematiere String?
+  hoursLevel1 Int?
+  hoursLevel2 Int?
+  hoursLevel3 Int?
   noteDevoirs NoteDevoir[]
   schedules   Schedule[]
   tafs        Taf[]
@@ -184,11 +205,36 @@ model Absence {
   teacherId   Int?
   dateAbsence DateTime?
   hour        String?
+  hourEnd     String?
+  status      String?   @default("absence")
+  lateMinutes Int?
+  validated   Boolean?  @default(false)
+  validatedAt DateTime?
   classe      Class?    @relation(fields: [classId], references: [id])
   student     Student?  @relation(fields: [studentId], references: [id])
   teacher     Teacher?  @relation(fields: [teacherId], references: [id])
 }
-
+model TeacherAbsence {
+  id         Int       @id @default(autoincrement())
+  teacherId  Int
+  dateStart  DateTime
+  dateEnd    DateTime
+  hourStart  String?
+  hourEnd    String?
+  reason     String?
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  classes    Class[]   @relation("TeacherAbsenceToClass")
+}
+model AdminAlert {
+  id        Int       @id @default(autoincrement())
+  type      String?
+  message   String
+  createdAt DateTime  @default(now())
+  read      Boolean   @default(false)
+  readAt    DateTime?
+}
 model Planing {
   id                 Int                 @id @default(autoincrement())
   teacherId          Int?

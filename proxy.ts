@@ -26,18 +26,20 @@ export function proxy(request: NextRequest) {
     }
 
     const authToken = request.cookies.get('auth-token');
+    const userRole = request.cookies.get('user-role')?.value;
 
-    // Protect all routes except /login (and what's excluded in the matcher)
-    const isPublicRoute = pathname === '/login';
+    // Pages de connexion publiques : /login (admin) et /prof (enseignant)
+    const isPublicRoute = pathname === '/login' || pathname === '/prof';
 
     if (!isPublicRoute && !authToken) {
         const url = request.nextUrl.clone();
-        url.pathname = '/login';
+        // Un enseignant revient sur sa propre page de connexion
+        url.pathname = userRole === 'prof' ? '/prof' : '/login';
         return NextResponse.redirect(url);
     }
 
-    // Redirect to dashboard if logged in and trying to access login
-    if (pathname === '/login' && authToken) {
+    // Redirect to dashboard if logged in and trying to access a login page
+    if (isPublicRoute && authToken) {
         const url = request.nextUrl.clone();
         url.pathname = '/dashboard';
         return NextResponse.redirect(url);
