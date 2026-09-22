@@ -49,3 +49,10 @@ next-env.d.ts
 /generated/prisma
 
 .env*.local
+
+# sauvegardes de build creees avant un deploiement
+.next.bak-*/
+
+# logs applicatifs
+/logs/
+*.log
