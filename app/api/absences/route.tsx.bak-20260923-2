@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
-import { matieresDesSignalements } from '../../../lib/emploi-du-temps';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -58,8 +57,6 @@ export async function GET(request: Request) {
         include: {
             student: true,
             classe: true,
-            // Enseignant qui a fait le signalement
-            teacher: { select: { id: true, name: true, subject: { select: { name: true } } } },
             // Billet émis depuis cette ligne, et les enseignants qui l'ont reçu
             billet: {
                 select: {
@@ -70,13 +67,7 @@ export async function GET(request: Request) {
             parentNotice: { select: { id: true, sentAt: true } },
         }
     })
-
-    // Matière du cours signalé, d'après l'emploi du temps ; à défaut, celle de la fiche enseignant
-    const matieres = await matieresDesSignalements(absence);
-    return NextResponse.json(absence.map((a, i) => ({
-        ...a,
-        matiere: matieres[i] || a.teacher?.subject?.name || null,
-    })))
+    return NextResponse.json(absence)
 }
 
 export async function POST(request: Request) {
