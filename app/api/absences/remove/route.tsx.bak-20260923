@@ -27,7 +27,6 @@ export async function POST(request: Request) {
             include: {
                 student: { select: { firstName: true, lastName: true } },
                 classe: { select: { name: true, level: true } },
-                billet: { select: { id: true } },
             }
         });
 
@@ -43,14 +42,6 @@ export async function POST(request: Request) {
                     { status: 403 }
                 );
             }
-        }
-
-        // Un billet a été émis depuis ce signalement : il reste au registre
-        if (absence.billet) {
-            return NextResponse.json(
-                { error: "Un billet a été émis pour ce signalement : il ne peut plus être modifié ni supprimé" },
-                { status: 409 }
-            );
         }
 
         const nomEleve = absence.student

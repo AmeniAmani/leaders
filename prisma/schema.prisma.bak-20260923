@@ -39,8 +39,6 @@ model Student {
   chats Chat[]
   chatBlocked Boolean? @default(false)
   documents StudentDocument[]
-  billets        Billet[]
-  parentNotices  ParentAbsenceNotice[]
 }
 
 model Parent {
@@ -103,7 +101,6 @@ model Teacher {
   subjectId Int?
   absences  Absence[]
   teacherAbsences TeacherAbsence[]
-  notifications TeacherNotification[]
   planings  Planing[]
   schedules Schedule[]
   subject   Subject?   @relation(fields: [subjectId], references: [id])
@@ -127,7 +124,6 @@ model Class {
   tafs        Taf[]
   teachers    Teacher[]    @relation("ClassToTeacher")
   teacherAbsences TeacherAbsence[] @relation("TeacherAbsenceToClass")
-  billets     Billet[]
 
   chats Chat[]
   chatBlocked Boolean? @default(false)
@@ -214,65 +210,9 @@ model Absence {
   lateMinutes Int?
   validated   Boolean?  @default(false)
   validatedAt DateTime?
-  // Envoi au parent de la journée d'absence auquel cette ligne est rattachée
-  parentNoticeId Int?
   classe      Class?    @relation(fields: [classId], references: [id])
   student     Student?  @relation(fields: [studentId], references: [id])
   teacher     Teacher?  @relation(fields: [teacherId], references: [id])
-  parentNotice ParentAbsenceNotice? @relation(fields: [parentNoticeId], references: [id], onDelete: SetNull)
-  billet      Billet?
-}
-
-// Billet d'entrée (élève absent qui arrive en cours de journée) ou de retard.
-// Il ne supprime jamais l'absence d'où il part.
-model Billet {
-  id        Int      @id @default(autoincrement())
-  type      String   // "entree" | "retard"
-  studentId Int
-  classId   Int
-  date      DateTime // le jour, même format que Absence.dateAbsence
-  hour      String?  // créneau où le billet s'applique ; null s'il ne reste aucun cours ce jour-là
-  hourEnd   String?
-  absenceId Int      @unique
-  createdBy String
-  createdAt DateTime @default(now())
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  classe    Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  absence   Absence  @relation(fields: [absenceId], references: [id], onDelete: Restrict)
-  notifications TeacherNotification[]
-
-  @@index([studentId, date])
-}
-
-model TeacherNotification {
-  id        Int      @id @default(autoincrement())
-  teacherId Int
-  type      String   // "billet"
-  title     String
-  message   String
-  billetId  Int?
-  read      Boolean  @default(false)
-  readAt    DateTime?
-  createdAt DateTime @default(now())
-  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  billet    Billet?  @relation(fields: [billetId], references: [id], onDelete: SetNull)
-
-  @@index([teacherId, read])
-}
-
-// Le parent a été prévenu de l'absence de son enfant pour ce jour-là.
-// Une seule ligne par élève et par jour : c'est ce qui empêche un second envoi.
-model ParentAbsenceNotice {
-  id             Int      @id @default(autoincrement())
-  studentId      Int
-  date           DateTime
-  notificationId Int?
-  sentBy         String
-  sentAt         DateTime @default(now())
-  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  absences       Absence[]
-
-  @@unique([studentId, date])
 }
 model TeacherAbsence {
   id         Int       @id @default(autoincrement())

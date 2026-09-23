@@ -17,12 +17,6 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
-    if (await prisma.billet.findUnique({ where: { absenceId: Number(params.id) } })) {
-        return NextResponse.json(
-            { error: "Un billet a été émis pour ce signalement : il ne peut plus être modifié" },
-            { status: 409 }
-        );
-    }
     const json = await request.json()
 
     const updatedabsence = await prisma.absence.update({
@@ -51,14 +45,6 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
-    // Un billet a été émis depuis ce signalement : il reste au registre
-    const billet = await prisma.billet.findUnique({ where: { absenceId: Number(params.id) } });
-    if (billet) {
-        return NextResponse.json(
-            { error: "Un billet a été émis pour ce signalement : il ne peut plus être supprimé" },
-            { status: 409 }
-        );
-    }
     const deletedabsence = await prisma.absence.delete({
         where: {
             id: Number(params.id)

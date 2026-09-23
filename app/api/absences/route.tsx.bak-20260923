@@ -57,14 +57,6 @@ export async function GET(request: Request) {
         include: {
             student: true,
             classe: true,
-            // Billet émis depuis cette ligne, et les enseignants qui l'ont reçu
-            billet: {
-                select: {
-                    id: true, type: true, hour: true, hourEnd: true, createdAt: true,
-                    notifications: { select: { teacher: { select: { name: true } } } },
-                }
-            },
-            parentNotice: { select: { id: true, sentAt: true } },
         }
     })
     return NextResponse.json(absence)

@@ -27,7 +27,6 @@ const depuis = (iso: string) => {
 export const Topbar = () => {
     const [user, setUser] = useState({ name: "Utilisateur", role: "" });
     const [isAdmin, setIsAdmin] = useState(false);
-    const [isProf, setIsProf] = useState(false);
     const { toggle } = useSidebar();
     const router = useRouter();
     const pathname = usePathname();
@@ -58,17 +57,12 @@ export const Topbar = () => {
 
         setUser({ name, role: roleDisplay });
         setIsAdmin(role === "admin");
-        setIsProf(role === "prof");
     }, []);
-
-    // Administration : alertes. Enseignant : billets envoyés par l'administration.
-    const alertesActives = isAdmin || isProf;
-    const alertsUrl = isAdmin ? "/api/admin-alerts" : "/api/teacher-notifications";
 
     // Chargement des alertes non lues
     const fetchAlerts = useCallback(async () => {
         try {
-            const res = await fetch(alertsUrl, { cache: "no-store" });
+            const res = await fetch("/api/admin-alerts", { cache: "no-store" });
             if (!res.ok) return;
             const data = await res.json();
             const list: AdminAlertItem[] = Array.isArray(data) ? data : (data.alerts ?? []);
@@ -80,11 +74,11 @@ export const Topbar = () => {
         } catch (error) {
             console.error("Failed to fetch alerts:", error);
         }
-    }, [alertsUrl]);
+    }, []);
 
     // Actualisation : toutes les 30 s, au retour sur l'onglet, et sur demande
     useEffect(() => {
-        if (!alertesActives) return;
+        if (!isAdmin) return;
         fetchAlerts();
         const timer = setInterval(fetchAlerts, 30000);
         window.addEventListener("focus", fetchAlerts);
@@ -94,17 +88,17 @@ export const Topbar = () => {
             window.removeEventListener("focus", fetchAlerts);
             window.removeEventListener("admin-alerts:refresh", fetchAlerts);
         };
-    }, [alertesActives, fetchAlerts]);
+    }, [isAdmin, fetchAlerts]);
 
     // Actualisation à chaque changement de page
     useEffect(() => {
-        if (alertesActives) fetchAlerts();
-    }, [pathname, alertesActives, fetchAlerts]);
+        if (isAdmin) fetchAlerts();
+    }, [pathname, isAdmin, fetchAlerts]);
 
     const dismissAlert = async (id: number) => {
         setAlerts((prev) => prev.filter((a) => a.id !== id));
         try {
-            await fetch(alertsUrl, {
+            await fetch("/api/admin-alerts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ alertId: id }),
@@ -250,8 +244,8 @@ export const Topbar = () => {
                     </AnimatePresence>
                 </div>
 
-                {/* Alertes (administration) ou billets reçus (enseignant) */}
-                {alertesActives && (
+                {/* Alertes (administration uniquement) */}
+                {isAdmin && (
                     <div ref={alertsRef} className="relative">
                         <button
                             type="button"
@@ -279,7 +273,7 @@ export const Topbar = () => {
                                     className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50"
                                 >
                                     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                        <p className="font-bold text-slate-900 text-sm">{isAdmin ? "Alertes" : "Billets reçus"}</p>
+                                        <p className="font-bold text-slate-900 text-sm">Alertes</p>
                                         <span className="text-xs text-slate-500">
                                             {alerts.length} en attente
                                         </span>
@@ -294,7 +288,7 @@ export const Topbar = () => {
                                         ) : (
                                             <ul className="divide-y divide-slate-50">
                                                 {alerts.map((alert) => {
-                                                    const estAbsence = (alert.type ?? "").startsWith("absence:") || alert.type === "billet";
+                                                    const estAbsence = (alert.type ?? "").startsWith("absence:");
                                                     return (
                                                         <li key={alert.id} className="p-3 flex gap-3 hover:bg-slate-50 transition-colors">
                                                             <div className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center ${estAbsence ? "bg-red-50" : "bg-amber-50"}`}>
@@ -307,8 +301,7 @@ export const Topbar = () => {
                                                                     type="button"
                                                                     onClick={() => {
                                                                         setShowAlerts(false);
-                                                                        // L'enseignant retrouve l'élève dans sa feuille d'appel
-                                        router.push(isAdmin ? "/absences" : "/absences/new");
+                                                                        router.push("/absences");
                                                                     }}
                                                                     className="text-left text-sm text-slate-700 leading-snug hover:text-indigo-600 transition-colors"
                                                                 >

@@ -1,8 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
-import { rattacherAuPrevenu } from '../../../../lib/absences-parent';
-import { etatsAppel } from '../../../../lib/emploi-du-temps';
 
 function libelleClasse(level: string | null, name: string | null) {
     if (level === "1") return "السابعة أساسي " + name
@@ -81,8 +79,7 @@ export async function POST(request: Request) {
                 hour: hour,
             },
             include: {
-                student: { select: { firstName: true, lastName: true } },
-                billet: { select: { id: true } },
+                student: { select: { firstName: true, lastName: true } }
             }
         });
 
@@ -95,19 +92,9 @@ export async function POST(request: Request) {
 
         const incomingStudentIds = incoming.map(st => st.id);
 
-        const etats = await etatsAppel(cid, String(dateAbsence).slice(0, 10), hour);
-
-        // Une ligne d'où part un billet, ou celle d'un élève arrivé avec un billet
-        // d'entrée sur ce créneau, reste au registre telle quelle : ni supprimée,
-        // ni modifiée par un nouvel enregistrement de l'appel.
-        const avecBillet = new Set([
-            ...existingAbsences.filter(a => a.billet && a.studentId).map(a => a.studentId as number),
-            ...Object.entries(etats).filter(([, e]) => e === "present_avec_billet").map(([id]) => Number(id)),
-        ]);
-
         // Lignes à retirer : l'élève n'est plus signalé sur ce créneau
         const toDelete = existingAbsences.filter(
-            a => a.studentId && !incomingStudentIds.includes(a.studentId) && !avecBillet.has(a.studentId)
+            a => a.studentId && !incomingStudentIds.includes(a.studentId)
         );
         const toDeleteIds = toDelete.map(a => a.id);
 
@@ -117,20 +104,15 @@ export async function POST(request: Request) {
         for (const a of existingAbsences) {
             if (a.studentId) parEleve.set(a.studentId, a);
         }
-        const toCreateList = incoming.filter(st => !parEleve.has(st.id) && !avecBillet.has(st.id));
+        const toCreateList = incoming.filter(st => !parEleve.has(st.id));
         const toUpdateList = incoming.filter(st => {
             const existant = parEleve.get(st.id);
-            if (!existant || avecBillet.has(st.id)) return false;
+            if (!existant) return false;
             return existant.status !== st.status || (existant.lateMinutes ?? null) !== st.lateMinutes;
         });
 
         // Absences retirées alors qu'elles avaient déjà été signalées au parent
         const retireesDejaEnvoyees = toDelete.filter(a => a.validated === true);
-
-        // Élèves « encore absents » que l'enseignant a laissés présents sans billet
-        const revenusSansBillet = Object.entries(etats)
-            .filter(([id, etat]) => etat === "encore_absent" && !incomingStudentIds.includes(Number(id)))
-            .map(([id]) => Number(id));
 
         const cookiesStore = cookies();
         const nameCookieStr = String((await cookiesStore).get('user-name')?.value || "Inconnu");
@@ -164,19 +146,13 @@ export async function POST(request: Request) {
                     }))
                 });
 
-                // Parent déjà prévenu de la journée : la nouvelle absence y est rattachée
-                for (const st of toCreateList) {
-                    if (st.status === "absence") await rattacherAuPrevenu(tx, st.id, targetDate);
-                }
-
-                // Une alerte par élève signalé, sauf si le parent est déjà prévenu
+                // Une alerte par élève signalé
                 const creees = await tx.absence.findMany({
                     where: {
                         classId: cid,
                         dateAbsence: targetDate,
                         hour: hour,
                         studentId: { in: toCreateList.map(st => st.id) },
-                        parentNoticeId: null,
                     },
                     include: { student: { select: { firstName: true, lastName: true } } }
                 });
@@ -229,32 +205,6 @@ export async function POST(request: Request) {
                 } else {
                     await tx.adminAlert.create({
                         data: { type: `absence:${existant.id}`, message }
-                    });
-                }
-            }
-
-            // Devenue une absence : rattachement à l'envoi du jour s'il existe
-            for (const st of toUpdateList) {
-                if (st.status === "absence") await rattacherAuPrevenu(tx, st.id, targetDate);
-            }
-
-            // 3 bis. Élève absent plus tôt, déclaré présent sans billet d'entrée
-            if (revenusSansBillet.length > 0) {
-                const eleves = await tx.student.findMany({
-                    where: { id: { in: revenusSansBillet } },
-                    select: { id: true, firstName: true, lastName: true },
-                });
-                for (const e of eleves) {
-                    const type = `sans-billet:${e.id}:${String(dateAbsence).slice(0, 10)}:${hour}`;
-                    const deja = await tx.adminAlert.findFirst({ where: { type } });
-                    if (deja) continue;
-                    await tx.adminAlert.create({
-                        data: {
-                            type,
-                            message:
-                                `${nomClasse} — ${nomDe(e, e.id)}, absent plus tôt le ${dateFr}, a été déclaré présent ` +
-                                `à ${creneau} par ${nameCookieStr} sans billet d'entrée.`,
-                        }
                     });
                 }
             }

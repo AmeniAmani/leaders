@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock } from "lucide-react";
+import { ChevronLeft, Save, Users, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -40,30 +40,6 @@ const CRENEAUX = HOURS.map((h) => {
     return { debut: h, fin, libelle: `${h} – ${fin}` };
 });
 
-// Cours en cours renvoyé par /api/absences/creneau-actuel
-interface CoursActuel {
-    classId: number;
-    subjectName: string | null;
-    start: string;
-    hour: string;
-    hourEnd: string;
-}
-
-// État calculé d'un élève sur le créneau (voir lib/emploi-du-temps.ts)
-type EtatAppel = "encore_absent" | "present_avec_billet" | "billet_retard";
-
-const BADGES: Record<EtatAppel, { libelle: string; style: string }> = {
-    encore_absent:       { libelle: "Encore absent",       style: "bg-red-100 text-red-700 border-red-200" },
-    present_avec_billet: { libelle: "Présent avec billet", style: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-    billet_retard:       { libelle: "Billet de retard",    style: "bg-amber-100 text-amber-700 border-amber-200" },
-};
-
-const libelleClasse = (cls?: { level: string; name: string }) =>
-    !cls ? "" :
-    cls.level === "1" ? "السابعة أساسي " + cls.name :
-    cls.level === "2" ? "الثامنة أساسي " + cls.name :
-    cls.level === "3" ? "التاسعة أساسي " + cls.name : "";
-
 // Date du jour au format AAAA-MM-JJ, en heure locale (toISOString donne l'heure UTC)
 const todayLocal = () => {
     const d = new Date();
@@ -94,12 +70,7 @@ export default function NewAbsencePage() {
     const [userId, setUserId] = useState<string | null>(null);
     const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
     const [teacherSubject, setTeacherSubject] = useState<string>("");
-
-    // Cours en cours d'après l'emploi du temps (plusieurs possibles : groupes)
-    const [coursActuels, setCoursActuels] = useState<CoursActuel[]>([]);
-    // État de chaque élève sur ce créneau, et élèves dont la ligne ne peut plus changer
-    const [etats, setEtats] = useState<Record<number, EtatAppel>>({});
-    const [verrouilles, setVerrouilles] = useState<Set<number>>(new Set());
+    const [allSchedules, setAllSchedules] = useState<any[]>([]);
 
     const getCookie = (name: string) => {
         if (typeof document === "undefined") return null;
@@ -124,25 +95,20 @@ export default function NewAbsencePage() {
                 // enseignant ne renvoie pas forcément la liste des élèves.
                 const studentsUrl = isTeacher && idStr ? `/api/students?teacherId=${idStr}` : '/api/students';
 
-                const [classesRes, studentsRes, teachersRes, creneauRes] = await Promise.all([
+                const [classesRes, studentsRes, teachersRes, schedulesRes] = await Promise.all([
                     fetch(classesUrl),
                     fetch(studentsUrl),
                     fetch(isTeacher && idStr ? `/api/teachers/${idStr}` : '/api/teachers'),
-                    // Lu à chaque ouverture : l'emploi du temps peut avoir changé
-                    isTeacher ? fetch('/api/absences/creneau-actuel', { cache: 'no-store' }) : Promise.resolve(null),
+                    fetch('/api/schedule'),
                 ]);
 
-                let classesList: Classe[] = [];
-                let studentsList: Student[] = [];
                 if (classesRes.ok) {
                     const classesData = await classesRes.json();
-                    classesList = Array.isArray(classesData) ? classesData : [];
-                    setClasses(classesList);
+                    setClasses(Array.isArray(classesData) ? classesData : []);
                 }
                 if (studentsRes.ok) {
                     const studentsData = await studentsRes.json();
-                    studentsList = Array.isArray(studentsData) ? studentsData : [];
-                    setAllStudents(studentsList);
+                    setAllStudents(Array.isArray(studentsData) ? studentsData : []);
                 }
                 if (teachersRes.ok) {
                     const teachersData = await teachersRes.json();
@@ -154,30 +120,68 @@ export default function NewAbsencePage() {
                         setSelectedTeacherId(Number(idStr));
                     }
                 }
-
-                // Feuille d'appel pré-remplie avec le cours en cours
-                const creneau = creneauRes && creneauRes.ok ? await creneauRes.json() : null;
-                const cours: CoursActuel[] = Array.isArray(creneau?.cours) ? creneau.cours : [];
-                setCoursActuels(cours);
-                if (cours.length > 0) {
-                    if (creneau.date) setDateFilter(creneau.date);
-                    appliquerCours(cours[0], classesList, studentsList);
-                } else {
-                    // Hors cours : l'heure actuelle, à corriger si besoin
-                    const cr = CRENEAUX.find(c => c.debut === `${String(new Date().getHours()).padStart(2, "0")}:00`);
-                    if (cr) {
-                        setHourFilter(cr.debut);
-                        setHourEndFilter(cr.fin);
-                    }
+                if (schedulesRes.ok) {
+                    const schedulesData = await schedulesRes.json();
+                    setAllSchedules(Array.isArray(schedulesData) ? schedulesData : []);
                 }
             } catch (error) {
                 console.error("Error fetching data:", error);
             }
         };
         fetchData();
-        // Chargement unique à l'ouverture de la feuille
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Effect to automatically set hour based on schedule
+    useEffect(() => {
+        const tId = userRole !== 'admin' ? userId : selectedTeacherId;
+        if (!selectedClassId || !tId || !allSchedules.length) {
+            if (!hourFilter && allSchedules.length > 0) {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const cr = CRENEAUX.find(c => c.debut === `${hh}:00`);
+                if (cr) {
+                    setHourFilter(cr.debut);
+                    setHourEndFilter(cr.fin);
+                }
+            }
+            return;
+        }
+
+        const now = new Date();
+        const selectedDate = new Date(dateFilter);
+        const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        const currentDay = days[selectedDate.getDay()];
+        const currentTime = now.getHours() + now.getMinutes() / 60;
+
+        const matchingSchedule = allSchedules.find(s =>
+            String(s.teacherId) === String(tId) &&
+            String(s.classId) === String(selectedClassId) &&
+            s.day === currentDay &&
+            (() => {
+                if (!s.start) return false;
+                const [h, m] = s.start.split(":").map(Number);
+                const startTime = h + m / 60;
+                return currentTime >= startTime && currentTime < (startTime + (s.duration || 1));
+            })()
+        );
+
+        if (matchingSchedule) {
+            // On ramène le créneau à l'heure pleine dans laquelle il commence
+            const debut = `${matchingSchedule.start.slice(0, 2)}:00`;
+            const cr = CRENEAUX.find(c => c.debut === debut);
+            if (cr) {
+                setHourFilter(cr.debut);
+                setHourEndFilter(cr.fin);
+            }
+        } else {
+            const hh = String(now.getHours()).padStart(2, '0');
+            const cr = CRENEAUX.find(c => c.debut === `${hh}:00`);
+            if (cr) {
+                setHourFilter(cr.debut);
+                setHourEndFilter(cr.fin);
+            }
+        }
+    }, [selectedClassId, userRole, userId, allSchedules, dateFilter, selectedTeacherId]);
 
     // Effect to fetch existing absences when class, date, or hour change
     useEffect(() => {
@@ -185,41 +189,24 @@ export default function NewAbsencePage() {
 
         const fetchExistingAbsences = async () => {
             try {
-                const res = await fetch(
-                    `/api/absences/appel?classId=${selectedClassId}&date=${dateFilter}&hour=${hourFilter}`,
-                    { cache: 'no-store' }
-                );
+                const res = await fetch(`/api/absences?classId=${selectedClassId}&date=${dateFilter}&hour=${hourFilter}`);
                 if (res.ok) {
-                    const data = await res.json();
-                    const existingAbsences = Array.isArray(data.absences) ? data.absences : [];
-                    const nouveauxEtats: Record<number, EtatAppel> = data.etats || {};
+                    const existingAbsences = await res.json();
+                    if (!Array.isArray(existingAbsences)) return;
 
                     const newAttendance: Record<number, string> = {};
                     const newLate: Record<number, string> = {};
-                    const bloques = new Set<number>();
                     students.forEach(s => {
-                        // Absent sur un créneau précédent, sans billet : pré-coché absent
-                        newAttendance[s.id] = nouveauxEtats[s.id] === "encore_absent" ? "absence" : "present";
+                        newAttendance[s.id] = "present";
                     });
 
                     existingAbsences.forEach((a: any) => {
                         newAttendance[a.studentId] = a.status || "absence";
                         if (a.lateMinutes) newLate[a.studentId] = String(a.lateMinutes);
-                        if (a.billet) bloques.add(a.studentId);
-                    });
-
-                    // Arrivé avec un billet d'entrée sur ce créneau
-                    Object.entries(nouveauxEtats).forEach(([id, etat]) => {
-                        if (etat === "present_avec_billet") {
-                            newAttendance[Number(id)] = "present";
-                            bloques.add(Number(id));
-                        }
                     });
 
                     setAttendance(newAttendance);
                     setLateMinutes(newLate);
-                    setEtats(nouveauxEtats);
-                    setVerrouilles(bloques);
                 }
             } catch (error) {
                 console.error("Error fetching existing absences:", error);
@@ -302,24 +289,8 @@ export default function NewAbsencePage() {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        choisirClasse(parseInt(e.target.value));
-    };
-
-    // Pré-remplissage : classe, séance et matière du cours de l'emploi du temps
-    const appliquerCours = (cours: CoursActuel, classesList = classes, studentsList = allStudents) => {
-        choisirClasse(cours.classId, classesList, studentsList);
-        const cr = CRENEAUX.find(c => c.debut === cours.hour);
-        if (cr) {
-            setHourFilter(cr.debut);
-            setHourEndFilter(cr.fin);
-        }
-        if (cours.subjectName) setTeacherSubject(cours.subjectName);
-    };
-
-    const choisirClasse = (classId: number, classesList = classes, studentsList = allStudents) => {
+        const classId = parseInt(e.target.value);
         setSelectedClassId(classId || null);
-        setEtats({});
-        setVerrouilles(new Set());
 
         if (!classId) {
             setStudents([]);
@@ -330,9 +301,9 @@ export default function NewAbsencePage() {
 
         // Les élèves de la classe, pris dans la liste chargée au démarrage.
         // On complète avec ceux éventuellement fournis par la route des classes.
-        const selectedClass = classesList.find((c) => c.id === classId);
+        const selectedClass = classes.find((c) => c.id === classId);
         const fromClasse = Array.isArray(selectedClass?.students) ? selectedClass!.students! : [];
-        const fromListe = studentsList.filter((s) => Number(s.classId) === classId);
+        const fromListe = allStudents.filter((s) => Number(s.classId) === classId);
 
         const parId = new Map<number, Student>();
         [...fromListe, ...fromClasse].forEach((s) => {
@@ -353,7 +324,6 @@ export default function NewAbsencePage() {
     };
 
     const setStatus = (studentId: number, status: string) => {
-        if (verrouilles.has(studentId)) return;
         setAttendance(prev => ({ ...prev, [studentId]: status }));
         if (status !== "retard") {
             setLateMinutes(prev => {
@@ -389,39 +359,6 @@ export default function NewAbsencePage() {
                             <Users className="w-5 h-5 text-indigo-500" />
                             Informations de la séance
                         </h3>
-
-                        {/* Cours en cours d'après l'emploi du temps */}
-                        {userRole !== 'admin' && (
-                            <div className="mb-6 flex flex-wrap items-center gap-2 p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 text-sm text-indigo-900">
-                                <CalendarClock className="w-4 h-4 text-indigo-500 shrink-0" />
-                                {coursActuels.length === 0 ? (
-                                    <span>Aucun cours à l&apos;emploi du temps en ce moment : choisissez la classe et la séance.</span>
-                                ) : coursActuels.length === 1 ? (
-                                    <span>
-                                        Pré-rempli d&apos;après votre emploi du temps : {libelleClasse(classes.find(c => c.id === coursActuels[0].classId))}
-                                        {coursActuels[0].subjectName ? ` — ${coursActuels[0].subjectName}` : ""}, {coursActuels[0].hour} – {coursActuels[0].hourEnd}.
-                                    </span>
-                                ) : (
-                                    <>
-                                        <span>Vous avez plusieurs cours en ce moment :</span>
-                                        {coursActuels.map(c => (
-                                            <button
-                                                key={`${c.classId}-${c.subjectName}`}
-                                                type="button"
-                                                onClick={() => appliquerCours(c)}
-                                                className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${
-                                                    selectedClassId === c.classId
-                                                        ? "bg-indigo-600 text-white border-indigo-600"
-                                                        : "bg-white border-indigo-200 hover:border-indigo-400"
-                                                }`}
-                                            >
-                                                {libelleClasse(classes.find(cl => cl.id === c.classId))}{c.subjectName ? ` — ${c.subjectName}` : ""}
-                                            </button>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Prof */}
@@ -474,12 +411,11 @@ export default function NewAbsencePage() {
                                     name="classId"
                                     required
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                                    value={selectedClassId ? String(selectedClassId) : ""}
                                     onChange={handleChange}
                                 >
                                     <option value="">Sélectionner une classe...</option>
                                     {classes.map((cls) => {
-                                        const name = libelleClasse(cls)
+                                        const name = (cls.level === "1") ? "السابعة أساسي " + cls.name : (cls.level === "2") ? "الثامنة أساسي " + cls.name : (cls.level === "3") ? "التاسعة أساسي " + cls.name : ""
                                         return (
                                             <option key={cls.id} value={cls.id}>
                                                 {name}
@@ -563,14 +499,8 @@ export default function NewAbsencePage() {
                                                                              "bg-slate-50 border-slate-200"
                                                 }`}
                                             >
-                                                <div className="flex-1 font-medium text-sm text-slate-800 flex flex-wrap items-center gap-2">
+                                                <div className="flex-1 font-medium text-sm text-slate-800">
                                                     {s.firstName} {s.lastName}
-                                                    {etats[s.id] && (
-                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold ${BADGES[etats[s.id]].style}`}>
-                                                            {etats[s.id] !== "encore_absent" && <Ticket className="w-3 h-3" />}
-                                                            {BADGES[etats[s.id]].libelle}
-                                                        </span>
-                                                    )}
                                                 </div>
 
                                                 {/* Minutes de retard */}
@@ -596,9 +526,7 @@ export default function NewAbsencePage() {
                                                             key={st.cle}
                                                             type="button"
                                                             onClick={() => setStatus(s.id, st.cle)}
-                                                            disabled={verrouilles.has(s.id)}
-                                                            title={verrouilles.has(s.id) ? "Billet émis par l'administration : non modifiable" : undefined}
-                                                            className={`px-3 py-2 rounded-lg border text-[13px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                                                            className={`px-3 py-2 rounded-lg border text-[13px] font-medium transition-all ${
                                                                 statut === st.cle
                                                                     ? st.actif
                                                                     : "bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700"
