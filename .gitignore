@@ -56,3 +56,7 @@ next-env.d.ts
 # logs applicatifs
 /logs/
 *.log
+
+# sauvegardes de fichiers faites avant une modification (desormais dans /var/backups/leaders/)
+*.bak-*
+lib/generated.bak-*/
