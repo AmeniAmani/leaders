@@ -231,10 +231,10 @@ export default function GrilleSalle({ data, selection, onCaseClick, moi, focusId
                                                 type="button"
                                                 onClick={onReservationClick ? (e) => { e.stopPropagation(); onReservationClick(validee.id); } : undefined}
                                                 className={`text-left rounded-md border px-1.5 py-1 text-[10px] leading-tight ${
-                                                    validee.teacherId === moi ? "bg-emerald-600 border-emerald-700 text-white" : "bg-indigo-100 border-indigo-200 text-indigo-800"
+                                                    validee.teacherId === moi ? "bg-emerald-600 border-emerald-700 text-white" : "bg-emerald-100 border-emerald-300 text-emerald-800"
                                                 } ${focusId === validee.id ? "ring-2 ring-indigo-500" : ""} ${onReservationClick ? "" : "cursor-default"}`}
                                             >
-                                                <span className="font-bold uppercase">{validee.teacherId === moi ? "Votre réservation" : "Réservée"}</span>
+                                                <span className="font-bold uppercase">{validee.teacherId === moi ? "Votre réservation · Validée" : "Validée"}</span>
                                                 <span className="block [overflow-wrap:anywhere]">{validee.enseignant}</span>
                                                 <span dir="auto" className="block [overflow-wrap:anywhere]">{validee.classe}</span>
                                             </button>
@@ -248,7 +248,7 @@ export default function GrilleSalle({ data, selection, onCaseClick, moi, focusId
                                                     r.teacherId === moi ? "bg-amber-200 border-amber-500 text-amber-900" : "bg-amber-50 border-amber-300 text-amber-800"
                                                 } ${focusId === r.id ? "ring-2 ring-amber-500" : ""} ${onReservationClick ? "" : "cursor-default"}`}
                                             >
-                                                <span className="font-bold uppercase">{r.teacherId === moi ? "Votre demande" : "Demande en attente"}</span>
+                                                <span className="font-bold uppercase">{r.teacherId === moi ? "Votre demande · En attente" : "En attente"}</span>
                                                 <span className="block [overflow-wrap:anywhere]">{r.enseignant}</span>
                                                 <span dir="auto" className="block [overflow-wrap:anywhere]">{r.classe}</span>
                                             </button>
@@ -267,8 +267,8 @@ export default function GrilleSalle({ data, selection, onCaseClick, moi, focusId
             {/* Légende */}
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-t border-slate-200 text-[11px] text-slate-600">
                 <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-200 border border-slate-300" />Cours</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-100 border border-indigo-200" />Réservée</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-50 border border-dashed border-amber-300" />Demande en attente</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-300" />Validée (salle réservée)</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-50 border border-dashed border-amber-300" />En attente de validation</span>
                 {onCaseClick && <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-50 ring-2 ring-emerald-500" />Votre choix</span>}
                 <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-50 lunch-hatch border border-slate-200" />Passé</span>
             </div>

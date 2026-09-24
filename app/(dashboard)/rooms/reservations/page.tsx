@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronLeft, Clapperboard, Loader2, X } from "lucide-react";
+import { Check, ChevronLeft, Clapperboard, Loader2, Trash2, X } from "lucide-react";
 import GrilleSalle, { NavigationSemaine, Reservation, STATUTS, SemaineSalle, libelleJour } from "@/components/reservations/GrilleSalle";
 
 const dateHeure = (iso: string) =>
@@ -73,6 +73,23 @@ export default function ReservationsSallePage() {
         }
     };
 
+    // Demande refusée ou annulée : on efface la ligne, elle disparaît aussi chez l'enseignant
+    const supprimer = async (r: Reservation) => {
+        const creneau = `${libelleJour(r.date, true)} de ${r.hour} à ${r.hourEnd}`;
+        if (!window.confirm(`Supprimer définitivement la demande ${r.statut === "refusee" ? "refusée" : "annulée"} de ${r.enseignant} (${r.classe}) : ${creneau} ?\n\nElle disparaîtra aussi de la page de l'enseignant.`)) return;
+        setTraitementId(r.id);
+        try {
+            const res = await fetch(`/api/reservations/${r.id}`, { method: "DELETE" });
+            const json = await res.json();
+            if (!res.ok) alert(json.error || "Erreur lors de la suppression");
+            if (focusId === r.id) setFocusId(null);
+            charger();
+            window.dispatchEvent(new Event("admin-alerts:refresh"));
+        } finally {
+            setTraitementId(null);
+        }
+    };
+
     if (!data) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -128,8 +145,9 @@ export default function ReservationsSallePage() {
                                 )}
                             </td>
                             <td className="px-3 py-3 text-right whitespace-nowrap">
+                                <div className="inline-flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                 {actions && (
-                                    <div className="inline-flex gap-2" onClick={e => e.stopPropagation()}>
+                                    <>
                                         <button
                                             type="button"
                                             onClick={() => traiter(r, "refuser")}
@@ -148,8 +166,20 @@ export default function ReservationsSallePage() {
                                             {traitementId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                             Valider
                                         </button>
-                                    </div>
+                                    </>
                                 )}
+                                {(r.statut === "refusee" || r.statut === "annulee") && (
+                                    <button
+                                        type="button"
+                                        onClick={() => supprimer(r)}
+                                        disabled={traitementId === r.id}
+                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                                        title="Supprimer"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                                </div>
                             </td>
                         </tr>
                     ))}

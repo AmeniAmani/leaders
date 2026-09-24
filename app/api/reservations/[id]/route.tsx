@@ -6,6 +6,7 @@ import { chevauche, conflit, libelleClasse, libelleCreneau, nomSalle } from '../
 
 // { action: "valider" | "refuser", motifRefus? } : administration.
 // { action: "annuler" } : l'enseignant, pour sa propre demande à venir.
+// DELETE : l'administration efface la ligne (voir plus bas).
 export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await props.params;
@@ -150,15 +151,15 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
                     where: { type: `reservation:${r.id}`, read: false },
                     data: { read: true, readAt: new Date() },
                 });
-                // Une réservation confirmée qui se libère : l'administration est prévenue
-                if (etaitValidee) {
-                    await tx.adminAlert.create({
-                        data: {
-                            type: `reservation_annulee:${r.id}`,
-                            message: `${r.teacher.name || nameuser} a annulé sa réservation de la ${salle} (${libelleClasse(r.classe)}) : ${creneau}. Le créneau est libre.`,
-                        },
-                    });
-                }
+                // L'administration est prévenue de toute annulation
+                await tx.adminAlert.create({
+                    data: {
+                        type: `reservation_annulee:${r.id}`,
+                        message: etaitValidee
+                            ? `${r.teacher.name || nameuser} a annulé sa réservation validée de la ${salle} (${libelleClasse(r.classe)}) : ${creneau}. Le créneau est libre.`
+                            : `${r.teacher.name || nameuser} a annulé sa demande de la ${salle} (${libelleClasse(r.classe)}) : ${creneau}.`,
+                    },
+                });
                 await tx.activity.create({
                     data: { nameUser: nameuser, description: `a annulé sa ${etaitValidee ? "réservation" : "demande"} de la ${salle} : ${creneau}.` },
                 });
@@ -173,6 +174,73 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
             return NextResponse.json({ error: error.message }, { status: 409 });
         }
         console.error("Erreur traitement réservation:", error);
+        return NextResponse.json({ error: "Une erreur est survenue" }, { status: 500 });
+    }
+}
+
+// L'administration supprime une demande refusée ou annulée par l'enseignant : la ligne
+// disparaît aussi chez l'enseignant. Une demande en attente ou validée ne se supprime pas
+// (on la refuse, ou l'enseignant l'annule).
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await props.params;
+        const store = await cookies();
+        const role = String(store.get('user-role')?.value || "");
+        const nameuser = String(store.get('user-name')?.value || "Inconnu");
+
+        if (role !== 'admin') {
+            return NextResponse.json({ error: "Seule l'administration peut supprimer une réservation" }, { status: 403 });
+        }
+
+        const r = await prisma.roomReservation.findUnique({
+            where: { id: Number(id) },
+            include: {
+                room: { select: { name: true } },
+                teacher: { select: { name: true } },
+                classe: { select: { name: true, level: true } },
+            },
+        });
+        if (!r) {
+            return NextResponse.json({ error: "Demande introuvable" }, { status: 404 });
+        }
+
+        if (r.statut !== "refusee" && r.statut !== "annulee") {
+            return NextResponse.json(
+                { error: "Seule une demande refusée ou annulée peut être supprimée" },
+                { status: 409 }
+            );
+        }
+
+        const creneau = libelleCreneau(r.date, r.hour, r.duration);
+        const salle = nomSalle(r.room);
+
+        await prisma.$transaction(async (tx) => {
+            // Seulement si elle est toujours refusée ou annulée
+            const { count } = await tx.roomReservation.deleteMany({
+                where: { id: r.id, statut: { in: ["refusee", "annulee"] } },
+            });
+            if (count === 0) throw new ErreurMetier("Cette demande vient de changer : rechargez la page");
+
+            await tx.adminAlert.updateMany({
+                where: { type: { in: [`reservation:${r.id}`, `reservation_annulee:${r.id}`] }, read: false },
+                data: { read: true, readAt: new Date() },
+            });
+
+            await tx.activity.create({
+                data: {
+                    nameUser: nameuser,
+                    description: `a supprimé la demande ${r.statut === "refusee" ? "refusée" : "annulée"} de la ${salle} ` +
+                        `de ${r.teacher.name || "un enseignant"} (${libelleClasse(r.classe)}) : ${creneau}.`,
+                },
+            });
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        if (error instanceof ErreurMetier) {
+            return NextResponse.json({ error: error.message }, { status: 409 });
+        }
+        console.error("Erreur suppression réservation:", error);
         return NextResponse.json({ error: "Une erreur est survenue" }, { status: 500 });
     }
 }
