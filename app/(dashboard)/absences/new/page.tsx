@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock, Check, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -94,6 +94,9 @@ export default function NewAbsencePage() {
     const [allStudents, setAllStudents] = useState<Student[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
+    // Administration : classes de l'enseignant choisi, et dernier enseignant demandé
+    const [chargementClasses, setChargementClasses] = useState(false);
+    const enseignantDemande = useRef<number | null>(null);
 
     // Statut de chaque élève : "present" | "absence" | "exclusion" | "retard"
     const [attendance, setAttendance] = useState<Record<number, string>>({});
@@ -143,7 +146,8 @@ export default function NewAbsencePage() {
                 const studentsUrl = isTeacher && idStr ? `/api/students?teacherId=${idStr}` : '/api/students';
 
                 const [classesRes, studentsRes, teachersRes, creneauRes] = await Promise.all([
-                    fetch(classesUrl),
+                    // Administration : les classes arrivent avec le choix de l'enseignant
+                    isTeacher ? fetch(classesUrl) : Promise.resolve(null),
                     fetch(studentsUrl),
                     fetch(isTeacher && idStr ? `/api/teachers/${idStr}` : '/api/teachers'),
                     // Lu à chaque ouverture : l'emploi du temps peut avoir changé
@@ -152,7 +156,7 @@ export default function NewAbsencePage() {
 
                 let classesList: Classe[] = [];
                 let studentsList: Student[] = [];
-                if (classesRes.ok) {
+                if (classesRes && classesRes.ok) {
                     const classesData = await classesRes.json();
                     classesList = Array.isArray(classesData) ? classesData : [];
                     setClasses(classesList);
@@ -396,6 +400,33 @@ export default function NewAbsencePage() {
         }
     };
 
+    // Administration : seules les classes affectées à l'enseignant choisi sont proposées
+    const choisirEnseignant = async (teacherId: number | null) => {
+        enseignantDemande.current = teacherId;
+        if (!teacherId) {
+            setClasses([]);
+            choisirClasse(0, []);
+            return;
+        }
+        setChargementClasses(true);
+        try {
+            const res = await fetch(`/api/classes/teacher/${teacherId}`, { cache: 'no-store' });
+            const data = res.ok ? await res.json() : [];
+            // Un autre enseignant a été choisi entre-temps
+            if (enseignantDemande.current !== teacherId) return;
+            const liste: Classe[] = Array.isArray(data) ? data : [];
+            setClasses(liste);
+            // La classe choisie n'est pas la sienne : on la retire
+            if (selectedClassId && !liste.some(c => c.id === selectedClassId)) {
+                choisirClasse(0, liste);
+            }
+        } catch (error) {
+            console.error("Error fetching teacher classes:", error);
+        } finally {
+            if (enseignantDemande.current === teacherId) setChargementClasses(false);
+        }
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         choisirClasse(parseInt(e.target.value));
     };
@@ -534,6 +565,7 @@ export default function NewAbsencePage() {
                                         setSelectedTeacherId(val ? Number(val) : null);
                                         const t = teachers.find(teacher => String(teacher.id) === val);
                                         setTeacherSubject(t?.subject?.name || "");
+                                        choisirEnseignant(val ? Number(val) : null);
                                     }}
                                 >
                                     <option value="">Sélectionner un enseignant...</option>
@@ -569,11 +601,16 @@ export default function NewAbsencePage() {
                                 <select
                                     name="classId"
                                     required
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm disabled:opacity-70 disabled:bg-slate-100 disabled:cursor-not-allowed"
                                     value={selectedClassId ? String(selectedClassId) : ""}
                                     onChange={handleChange}
+                                    disabled={userRole === 'admin' && (!selectedTeacherId || chargementClasses)}
                                 >
-                                    <option value="">Sélectionner une classe...</option>
+                                    <option value="">
+                                        {userRole === 'admin' && !selectedTeacherId ? "Choisissez d'abord l'enseignant..." :
+                                         chargementClasses ? "Chargement des classes..." :
+                                         "Sélectionner une classe..."}
+                                    </option>
                                     {classes.map((cls) => {
                                         const name = libelleClasse(cls)
                                         return (
@@ -583,6 +620,9 @@ export default function NewAbsencePage() {
                                         )
                                     })}
                                 </select>
+                                {userRole === 'admin' && selectedTeacherId && !chargementClasses && classes.length === 0 && (
+                                    <p className="text-xs text-amber-700">Aucune classe affectée à cet enseignant.</p>
+                                )}
                             </div>
                             {/* Date */}
                             <div className="space-y-2">
