@@ -157,9 +157,12 @@ export const Sidebar = () => {
     };
 
     const [role, setRole] = useState('');
+    // Identifiant du compte connecté (pour un admin, user-name contient son login)
+    const [login, setLogin] = useState('');
 
     useEffect(() => {
         setRole(getCookie("user-role") ?? "N/A");
+        setLogin(decodeURIComponent(getCookie("user-name") ?? ""));
     }, []);
 
     // Session enseignant (tablette partagée) : déconnexion après 1 heure sans activité.
@@ -297,7 +300,8 @@ export const Sidebar = () => {
 
                     {/* User / Settings Footer */}
                     <div className="mt-auto px-3 py-4 border-t border-white/10">
-                        {role === "admin" && <Link href="/settings" onClick={() => close()} className="flex items-center p-3 rounded-xl hover:bg-white/10 text-zinc-400 transition-colors">
+                        {/* Paramètres : lien réservé au compte « admin » (la page reste accessible aux autres admins) */}
+                        {role === "admin" && login === "admin" && <Link href="/settings" onClick={() => close()} className="flex items-center p-3 rounded-xl hover:bg-white/10 text-zinc-400 transition-colors">
                             <Settings className="h-5 w-5 mr-3" />
                             <span className="font-medium text-sm">Paramètres</span>
                         </Link>}
