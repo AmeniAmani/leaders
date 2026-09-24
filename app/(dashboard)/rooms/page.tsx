@@ -5,6 +5,15 @@ import { Search, Plus, MapPin, Users, MoreVertical, LayoutGrid, List as ListIcon
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+const getCookie = (name: string) => {
+    if (typeof document === "undefined") return null;
+
+    return document.cookie
+        .split("; ")
+        .find(row => row.startsWith(name + "="))
+        ?.split("=")[1] ?? null;
+};
+
 export default function RoomsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -17,7 +26,10 @@ export default function RoomsPage() {
 
     const fetchRooms = async () => {
         try {
-            const res = await fetch('/api/rooms');
+            // Enseignant : seulement les salles de ses classes
+            const userId = getCookie("user-id");
+            const url = getCookie("user-role") !== 'admin' && userId ? `/api/rooms?teacherId=${userId}` : '/api/rooms';
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setRooms(data);
@@ -28,15 +40,6 @@ export default function RoomsPage() {
             setIsLoading(false);
         }
     };
-
-    const getCookie = (name: string) => {
-        if (typeof document === "undefined") return null;
-
-        return document.cookie
-            .split("; ")
-            .find(row => row.startsWith(name + "="))
-            ?.split("=")[1] ?? null;
-        };
 
     const [role, setRole] = useState('');
 
@@ -108,6 +111,12 @@ export default function RoomsPage() {
                     </button>
                 </div>
             </div>
+
+            {isReadOnly && rooms.length === 0 && (
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm text-center text-slate-500">
+                    Aucune salle liée à vos classes.
+                </div>
+            )}
 
             {/* Content */}
             {viewMode === "grid" ? (

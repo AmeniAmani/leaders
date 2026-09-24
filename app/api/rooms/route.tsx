@@ -1,9 +1,40 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
+import { anneeScolaire, maintenant } from '../../../lib/emploi-du-temps'
 
-export async function GET() {
-    const rooms = await prisma.room.findMany()
+// ?teacherId=<id> : seulement la salle attitrée de chacune des classes de
+// l'enseignant (classes affectées ; à défaut, celles de son emploi du temps,
+// comme /api/classes/teacher/<id>). Sans paramètre : toutes les salles.
+export async function GET(request: Request) {
+    const teacherIdParam = new URL(request.url).searchParams.get('teacherId')
+    if (!teacherIdParam) {
+        const rooms = await prisma.room.findMany()
+        return NextResponse.json(rooms)
+    }
+
+    const teacherId = Number(teacherIdParam)
+    const teacher = isNaN(teacherId) ? null : await prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, subjectId: true, classes: { select: { id: true } } }
+    })
+    if (!teacher) {
+        return NextResponse.json([])
+    }
+
+    let classIds = teacher.classes.map(c => c.id)
+    if (classIds.length === 0) {
+        const schedules = await prisma.schedule.findMany({
+            where: { teacherId: teacher.id, subjectId: teacher.subjectId, as: anneeScolaire(maintenant().date) },
+            select: { classId: true }
+        })
+        classIds = Array.from(new Set(schedules.map(s => s.classId).filter((id): id is number => id !== null)))
+    }
+
+    const rooms = await prisma.room.findMany({
+        where: { class: { id: { in: classIds } } },
+        orderBy: { id: 'asc' }
+    })
     return NextResponse.json(rooms)
 }
 
