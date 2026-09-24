@@ -236,6 +236,10 @@ model Billet {
   absenceId Int      @unique
   createdBy String
   createdAt DateTime @default(now())
+  // Billet d'entrée : l'enseignant du cours valide l'arrivée de l'élève ou signale qu'il n'est pas venu
+  statut    String   @default("en_attente") // "en_attente" | "valide" | "non_arrive"
+  traiteAt  DateTime?
+  traitePar String?
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   classe    Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   absence   Absence  @relation(fields: [absenceId], references: [id], onDelete: Restrict)

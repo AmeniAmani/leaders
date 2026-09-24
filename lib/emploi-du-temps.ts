@@ -138,6 +138,7 @@ export type EtatAppel = "encore_absent" | "present_avec_billet" | "billet_retard
 // - "present_avec_billet" : billet d'entrée émis pour ce créneau ;
 // - "billet_retard"       : billet de retard émis pour le retard saisi sur ce créneau.
 // Un élève absent de la liste est simplement présent (y compris après un billet).
+// Un billet d'entrée signalé « non arrivé » par l'enseignant ne compte pas.
 export async function etatsAppel(classId: number, jour: string, hour: string) {
     const h = enMinutes(hour);
     const etats: Record<number, EtatAppel> = {};
@@ -154,7 +155,7 @@ export async function etatsAppel(classId: number, jour: string, hour: string) {
             select: { studentId: true, hour: true },
         }),
         prisma.billet.findMany({
-            where: { studentId: { in: ids }, date },
+            where: { studentId: { in: ids }, date, statut: { not: "non_arrive" } },
             select: { studentId: true, type: true, hour: true },
         }),
     ]);

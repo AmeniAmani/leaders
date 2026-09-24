@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock, Check, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -52,11 +52,26 @@ interface CoursActuel {
 // État calculé d'un élève sur le créneau (voir lib/emploi-du-temps.ts)
 type EtatAppel = "encore_absent" | "present_avec_billet" | "billet_retard";
 
+// Billet d'entrée affecté à ce créneau : l'enseignant valide l'arrivée de l'élève
+interface BilletCreneau {
+    id: number;
+    studentId: number;
+    statut: string; // "en_attente" | "valide"
+    traiteAt: string | null;
+    traitePar: string | null;
+}
+
 const BADGES: Record<EtatAppel, { libelle: string; style: string }> = {
     encore_absent:       { libelle: "Encore absent",       style: "bg-red-100 text-red-700 border-red-200" },
     present_avec_billet: { libelle: "Présent avec billet", style: "bg-emerald-100 text-emerald-700 border-emerald-200" },
     billet_retard:       { libelle: "Billet de retard",    style: "bg-amber-100 text-amber-700 border-amber-200" },
 };
+
+const parEleve = (liste: unknown): Record<number, BilletCreneau> =>
+    Object.fromEntries((Array.isArray(liste) ? liste as BilletCreneau[] : []).map(b => [b.studentId, b]));
+
+const heureDe = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
 
 const libelleClasse = (cls?: { level: string; name: string }) =>
     !cls ? "" :
@@ -100,6 +115,9 @@ export default function NewAbsencePage() {
     // État de chaque élève sur ce créneau, et élèves dont la ligne ne peut plus changer
     const [etats, setEtats] = useState<Record<number, EtatAppel>>({});
     const [verrouilles, setVerrouilles] = useState<Set<number>>(new Set());
+    // Billets d'entrée du créneau, par élève
+    const [billets, setBillets] = useState<Record<number, BilletCreneau>>({});
+    const [billetEnCours, setBilletEnCours] = useState<number | null>(null);
 
     const getCookie = (name: string) => {
         if (typeof document === "undefined") return null;
@@ -220,6 +238,7 @@ export default function NewAbsencePage() {
                     setLateMinutes(newLate);
                     setEtats(nouveauxEtats);
                     setVerrouilles(bloques);
+                    setBillets(parEleve(data.billets));
                 }
             } catch (error) {
                 console.error("Error fetching existing absences:", error);
@@ -228,6 +247,82 @@ export default function NewAbsencePage() {
 
         fetchExistingAbsences();
     }, [selectedClassId, dateFilter, hourFilter, students]);
+
+    // Élève signalé « non arrivé » : le billet ne compte plus, il redevient absent sur ce créneau.
+    // Seule sa ligne change, pour ne pas perdre l'appel en cours de saisie.
+    const eleveNonArrive = useCallback((studentId: number) => {
+        setEtats(prev => ({ ...prev, [studentId]: "encore_absent" }));
+        setAttendance(prev => ({ ...prev, [studentId]: "absence" }));
+        setVerrouilles(prev => {
+            const copie = new Set(prev);
+            copie.delete(studentId);
+            return copie;
+        });
+        setBillets(prev => {
+            const copie = { ...prev };
+            delete copie[studentId];
+            return copie;
+        });
+    }, []);
+
+    // Billet traité depuis la cloche : on relit les billets du créneau
+    const rechargerBillets = useCallback(async () => {
+        if (!selectedClassId || !dateFilter || !hourFilter) return;
+        try {
+            const res = await fetch(
+                `/api/absences/appel?classId=${selectedClassId}&date=${dateFilter}&hour=${hourFilter}`,
+                { cache: 'no-store' }
+            );
+            if (!res.ok) return;
+            const nouveaux = parEleve((await res.json()).billets);
+            // Billet disparu : signalé « non arrivé »
+            Object.keys(billets).map(Number).filter(id => !nouveaux[id]).forEach(eleveNonArrive);
+            setBillets(nouveaux);
+        } catch (error) {
+            console.error("Error refreshing billets:", error);
+        }
+    }, [selectedClassId, dateFilter, hourFilter, billets, eleveNonArrive]);
+
+    useEffect(() => {
+        window.addEventListener("billets:refresh", rechargerBillets);
+        return () => window.removeEventListener("billets:refresh", rechargerBillets);
+    }, [rechargerBillets]);
+
+    const traiterBillet = async (student: Student, arrive: boolean) => {
+        const billet = billets[student.id];
+        if (!billet) return;
+        if (!arrive && !window.confirm(
+            `Signaler que ${student.firstName} ${student.lastName} n'est pas arrivé ?\n\n` +
+            `L'administration en sera informée et l'élève sera marqué absent : pensez à enregistrer l'appel.`
+        )) return;
+
+        setBilletEnCours(student.id);
+        try {
+            const res = await fetch("/api/billets/valider", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ billetId: billet.id, arrive }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Erreur lors de la validation du billet");
+                rechargerBillets();
+                return;
+            }
+            if (arrive) {
+                setBillets(prev => ({ ...prev, [student.id]: { ...billet, ...data.billet } }));
+            } else {
+                eleveNonArrive(student.id);
+            }
+            // La cloche se met à jour
+            window.dispatchEvent(new Event("admin-alerts:refresh"));
+        } catch (error) {
+            console.error(error);
+            alert("Erreur lors de la validation du billet");
+        } finally {
+            setBilletEnCours(null);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -320,6 +415,7 @@ export default function NewAbsencePage() {
         setSelectedClassId(classId || null);
         setEtats({});
         setVerrouilles(new Set());
+        setBillets({});
 
         if (!classId) {
             setStudents([]);
@@ -569,6 +665,37 @@ export default function NewAbsencePage() {
                                                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold ${BADGES[etats[s.id]].style}`}>
                                                             {etats[s.id] !== "encore_absent" && <Ticket className="w-3 h-3" />}
                                                             {BADGES[etats[s.id]].libelle}
+                                                        </span>
+                                                    )}
+                                                    {/* Billet d'entrée : l'élève s'est-il présenté ? */}
+                                                    {billets[s.id]?.statut === "valide" && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                            <Check className="w-3 h-3" />
+                                                            Arrivée validée{billets[s.id].traiteAt ? ` à ${heureDe(billets[s.id].traiteAt)}` : ""}
+                                                        </span>
+                                                    )}
+                                                    {billets[s.id]?.statut === "en_attente" && (
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => traiterBillet(s, true)}
+                                                                disabled={billetEnCours === s.id}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 disabled:opacity-50 whitespace-nowrap"
+                                                            >
+                                                                {billetEnCours === s.id
+                                                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                    : <Check className="w-3.5 h-3.5" />}
+                                                                Valider
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => traiterBillet(s, false)}
+                                                                disabled={billetEnCours === s.id}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-red-200 bg-white text-red-600 text-xs font-bold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                                Non arrivé
+                                                            </button>
                                                         </span>
                                                     )}
                                                 </div>

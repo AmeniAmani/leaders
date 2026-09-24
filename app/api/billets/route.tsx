@@ -6,10 +6,11 @@ import {
 } from '../../../lib/emploi-du-temps';
 
 // Émission d'un billet par l'administration, depuis une ligne de la liste des absences.
-// - ligne « Absent » -> billet d'entrée, pour l'enseignant qui a la classe sur le
-//   créneau en cours ; pendant une pause ou avant le premier cours, pour le
-//   prochain cours de la journée ; s'il n'en reste aucun, le billet est seulement
-//   enregistré.
+// - ligne « Absent » -> billet d'entrée pour le créneau d'une heure qui suit
+//   l'émission (émis à 9h40 -> créneau de 10h, même si le cours de 9h dure deux
+//   heures), ou à défaut le premier cours suivant de la journée ; s'il n'en reste
+//   aucun, le billet est seulement enregistré. L'enseignant de ce créneau valide
+//   ensuite l'arrivée de l'élève (billets/valider).
 // - ligne « Retard » -> billet de retard, pour l'enseignant du créneau du retard.
 // Le billet ne supprime ni ne modifie l'absence d'origine. Rien n'est envoyé au parent.
 export async function POST(request: Request) {
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
         let hour: string | null = null;
         let hourEnd: string | null = null;
         let enseignants: number[] = [];
-        let situation: "en_cours" | "prochain" | "aucun_cours" | "retard" | "regularisation";
+        let situation: "prochain" | "aucun_cours" | "retard" | "regularisation";
 
         const cours = await coursDuJour({ jour, classId: absence.classId });
 
@@ -70,22 +71,16 @@ export async function POST(request: Request) {
         } else if (!estAujourdhui) {
             situation = "regularisation";
         } else {
-            const enCours = coursA(cours, minutes);
-            if (enCours.length > 0) {
-                ({ hour, hourEnd } = creneauDe(minutes));
-                enseignants = enseignantsDe(enCours);
-                situation = "en_cours";
+            // Première minute de cours à partir de l'heure pleine suivante
+            const heureSuivante = Math.floor(minutes / 60) * 60 + 60;
+            const suivants = cours.filter(c => c.fin > heureSuivante);
+            if (suivants.length > 0) {
+                const debut = Math.min(...suivants.map(c => Math.max(c.debut, heureSuivante)));
+                ({ hour, hourEnd } = creneauDe(debut));
+                enseignants = enseignantsDe(coursA(cours, debut));
+                situation = "prochain";
             } else {
-                // Pause, entre deux cours ou avant le premier : le prochain cours du jour
-                const suivants = cours.filter(c => c.debut > minutes);
-                if (suivants.length > 0) {
-                    const debut = Math.min(...suivants.map(c => c.debut));
-                    ({ hour, hourEnd } = creneauDe(debut));
-                    enseignants = enseignantsDe(coursA(cours, debut));
-                    situation = "prochain";
-                } else {
-                    situation = "aucun_cours";
-                }
+                situation = "aucun_cours";
             }
         }
 
@@ -99,9 +94,9 @@ export async function POST(request: Request) {
 
             if (type === "entree") {
                 // Un seul billet d'entrée tant que l'élève n'a pas été de nouveau
-                // signalé absent après ce billet
+                // signalé absent après ce billet ; un billet « non arrivé » ne compte pas
                 const dernier = await tx.billet.findFirst({
-                    where: { studentId: absence.studentId!, date: absence.dateAbsence!, type: "entree" },
+                    where: { studentId: absence.studentId!, date: absence.dateAbsence!, type: "entree", statut: { not: "non_arrive" } },
                     orderBy: { createdAt: 'desc' },
                 });
                 if (dernier) {
@@ -128,6 +123,7 @@ export async function POST(request: Request) {
                     hourEnd,
                     absenceId: absence.id,
                     createdBy: nameuser,
+                    ...(type === "entree" && situation === "prochain" ? {} : { statut: "valide", traiteAt: new Date(), traitePar: nameuser }),
                 },
             });
 
@@ -139,7 +135,8 @@ export async function POST(request: Request) {
                         type: "billet",
                         title: libelle,
                         message: `L'administration a envoyé un billet pour ${nomEleve}` +
-                            (hour ? ` (${libelle.toLowerCase()}, cours de ${hour} à ${hourEnd}).` : "."),
+                            (hour ? ` (${libelle.toLowerCase()}, cours de ${hour} à ${hourEnd}).` : ".") +
+                            (type === "entree" ? " Validez son arrivée quand l'élève se présente." : ""),
                         billetId: cree.id,
                     })),
                 });

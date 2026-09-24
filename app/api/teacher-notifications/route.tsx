@@ -19,7 +19,11 @@ export async function GET() {
         where: { teacherId, read: false },
         orderBy: { createdAt: 'desc' },
         take: 50,
-        select: { id: true, type: true, message: true, createdAt: true, read: true },
+        select: {
+            id: true, type: true, message: true, createdAt: true, read: true,
+            // Billet d'entrée à valider depuis la cloche
+            billet: { select: { id: true, type: true, statut: true } },
+        },
     });
 
     return NextResponse.json(notifications);

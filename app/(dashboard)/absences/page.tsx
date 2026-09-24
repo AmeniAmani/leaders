@@ -23,6 +23,10 @@ interface Absence {
         hour: string | null;
         hourEnd: string | null;
         createdAt: string;
+        // Billet d'entrée : arrivée validée ou non par l'enseignant du cours
+        statut: string;
+        traiteAt: string | null;
+        traitePar: string | null;
         notifications: { teacher: { name: string | null } | null }[];
     } | null;
     // Envoi au parent de la journée d'absence
@@ -417,7 +421,9 @@ export default function AbsencesPage() {
             const profs = (data.destinataires || []).join(", ");
             const heure = data.billet?.hour;
             const message =
-                data.situation === "prochain" ? `Pas de cours en ce moment : billet transmis pour le prochain cours (${heure}) à ${profs}.` :
+                data.situation === "prochain" ? (profs
+                    ? `Billet transmis pour le prochain cours (${heure}) à ${profs}, qui validera l'arrivée de l'élève.`
+                    : `Billet enregistré pour le prochain cours (${heure}) : aucun enseignant trouvé sur ce créneau.`) :
                 data.situation === "aucun_cours" ? "Plus aucun cours pour cette classe aujourd'hui : le billet est enregistré, aucun enseignant n'a été notifié." :
                 data.situation === "regularisation" ? "Signalement d'un jour passé : le billet est enregistré, aucun enseignant n'a été notifié." :
                 profs ? `Billet transmis à ${profs}.` : "Billet enregistré : aucun enseignant trouvé sur ce créneau.";
@@ -592,6 +598,19 @@ export default function AbsencesPage() {
                                                         {` à ${new Date(absence.billet.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}
                                                         {absence.billet.notifications.length > 0 &&
                                                             ` — ${absence.billet.notifications.map(n => n.teacher?.name).filter(Boolean).join(", ")}`}
+                                                        {absence.billet.type === "entree" && absence.billet.hour && (
+                                                            absence.billet.statut === "en_attente"
+                                                                ? <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">en attente de l&apos;élève</span>
+                                                            : absence.billet.statut === "non_arrive"
+                                                                ? <span className="ml-1 px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">non arrivé{absence.billet.traitePar ? ` (${absence.billet.traitePar})` : ""}</span>
+                                                            // Sans enseignant destinataire, rien n'était à valider
+                                                            : absence.billet.notifications.length === 0
+                                                                ? null
+                                                                : <span className="ml-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    arrivée validée{absence.billet.traitePar ? ` par ${absence.billet.traitePar}` : ""}
+                                                                    {absence.billet.traiteAt ? ` à ${new Date(absence.billet.traiteAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                                                                  </span>
+                                                        )}
                                                     </div>
                                                 );
 

@@ -168,7 +168,7 @@ async function envoyerJournee(p: {
                 orderBy: { hour: 'asc' },
             }),
             tx.billet.findFirst({
-                where: { studentId: p.studentId, date: p.date, type: "entree" },
+                where: { studentId: p.studentId, date: p.date, type: "entree", statut: { not: "non_arrive" } },
                 orderBy: { createdAt: 'desc' },
                 select: { hour: true },
             }),

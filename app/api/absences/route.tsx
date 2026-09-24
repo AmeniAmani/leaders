@@ -64,6 +64,7 @@ export async function GET(request: Request) {
             billet: {
                 select: {
                     id: true, type: true, hour: true, hourEnd: true, createdAt: true,
+                    statut: true, traiteAt: true, traitePar: true,
                     notifications: { select: { teacher: { select: { name: true } } } },
                 }
             },

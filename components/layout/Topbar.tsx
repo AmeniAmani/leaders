@@ -12,6 +12,8 @@ interface AdminAlertItem {
     message: string;
     createdAt: string;
     read: boolean;
+    // Enseignant : billet d'entrée à valider
+    billet?: { id: number; type: string; statut: string } | null;
 }
 
 // Temps écoulé, en clair
@@ -111,6 +113,32 @@ export const Topbar = () => {
             });
         } catch (error) {
             console.error("Failed to dismiss alert:", error);
+        }
+    };
+
+    // Enseignant : l'élève s'est présenté avec son billet d'entrée, ou pas
+    const [billetEnCours, setBilletEnCours] = useState<number | null>(null);
+    const traiterBillet = async (alert: AdminAlertItem, arrive: boolean) => {
+        if (!alert.billet) return;
+        if (!arrive && !window.confirm(
+            "Signaler que l'élève n'est pas arrivé ?\n\nL'administration en sera informée et l'élève redeviendra absent sur ce cours."
+        )) return;
+        setBilletEnCours(alert.id);
+        try {
+            const res = await fetch("/api/billets/valider", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ billetId: alert.billet.id, arrive }),
+            });
+            const data = await res.json();
+            if (!res.ok) window.alert(data.error || "Erreur lors de la validation du billet");
+            // La feuille d'appel ouverte se met à jour
+            window.dispatchEvent(new Event("billets:refresh"));
+        } catch (error) {
+            console.error("Failed to validate billet:", error);
+        } finally {
+            setBilletEnCours(null);
+            fetchAlerts();
         }
     };
 
@@ -318,13 +346,34 @@ export const Topbar = () => {
                                                                     <span className="text-[11px] text-slate-400">
                                                                         {depuis(alert.createdAt)}
                                                                     </span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => dismissAlert(alert.id)}
-                                                                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500"
-                                                                    >
-                                                                        OK
-                                                                    </button>
+                                                                    {alert.billet?.type === "entree" && alert.billet.statut === "en_attente" ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => traiterBillet(alert, false)}
+                                                                                disabled={billetEnCours === alert.id}
+                                                                                className="text-[11px] font-bold text-red-600 hover:text-red-500 disabled:opacity-50"
+                                                                            >
+                                                                                Non arrivé
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => traiterBillet(alert, true)}
+                                                                                disabled={billetEnCours === alert.id}
+                                                                                className="px-2 py-1 rounded-md bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-500 disabled:opacity-50"
+                                                                            >
+                                                                                Valider l&apos;arrivée
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => dismissAlert(alert.id)}
+                                                                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500"
+                                                                        >
+                                                                            OK
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </li>
