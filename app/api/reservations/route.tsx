@@ -45,6 +45,12 @@ export async function GET(request: Request) {
         const userId = Number(store.get('user-id')?.value);
         const estAdmin = role === 'admin';
 
+        // ?compte=1 : seulement le nombre de demandes en attente (pastille de la barre latérale)
+        if (new URL(request.url).searchParams.get('compte')) {
+            if (!estAdmin) return NextResponse.json({ enAttente: 0 });
+            return NextResponse.json({ enAttente: await prisma.roomReservation.count({ where: { statut: "en_attente" } }) });
+        }
+
         const salle = await salleCinema();
         if (!salle) {
             return NextResponse.json({ error: "Salle de cinéma introuvable" }, { status: 404 });

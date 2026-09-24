@@ -179,6 +179,33 @@ export const Sidebar = () => {
         return () => clearInterval(timer);
     }, [role]);
 
+    // Administration : demandes de réservation de salle en attente, en pastille sur « Salles ».
+    // Relu toutes les 30 s, au retour sur l'onglet, à chaque page et après une décision.
+    const [reservationsEnAttente, setReservationsEnAttente] = useState(0);
+    useEffect(() => {
+        if (role !== "admin") return;
+        let actif = true;
+        const compter = async () => {
+            try {
+                const res = await fetch("/api/reservations?compte=1", { cache: "no-store" });
+                const data = res.ok ? await res.json() : null;
+                if (actif && data) setReservationsEnAttente(data.enAttente || 0);
+            } catch {
+                // Pastille laissée telle quelle en cas d'erreur réseau
+            }
+        };
+        compter();
+        const timer = setInterval(compter, 30000);
+        window.addEventListener("focus", compter);
+        window.addEventListener("admin-alerts:refresh", compter);
+        return () => {
+            actif = false;
+            clearInterval(timer);
+            window.removeEventListener("focus", compter);
+            window.removeEventListener("admin-alerts:refresh", compter);
+        };
+    }, [role, pathname]);
+
     const handleLogout = (e: React.MouseEvent) => {
         e.preventDefault();
 
@@ -235,6 +262,14 @@ export const Sidebar = () => {
                                 <div className={cn("flex items-center flex-1")}>
                                     <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
                                     <span className="font-medium text-sm">{route.label}</span>
+                                    {route.href === "/rooms" && role === "admin" && reservationsEnAttente > 0 && (
+                                        <span
+                                            className="ml-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center"
+                                            title="Demandes de réservation en attente"
+                                        >
+                                            {reservationsEnAttente > 9 ? "9+" : reservationsEnAttente}
+                                        </span>
+                                    )}
                                 </div>
                                 {pathname === route.href && (
                                     <motion.div
