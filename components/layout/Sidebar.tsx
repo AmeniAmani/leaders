@@ -62,7 +62,9 @@ const routes = [
         icon: CreditCard,
         href: "/payments",
         color: "text-blue-500",
-        user: ["admin"]
+        user: ["admin"],
+        // Lien visible seulement pour ces comptes (la page reste accessible aux autres admins)
+        logins: ["admin", "jouaira"]
     },
     {
         label: "Enseignants",
@@ -264,7 +266,7 @@ export const Sidebar = () => {
 
                     {/* Routes */}
                     <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                        {routes.map((route) => ((route?.user?.includes(role)) &&
+                        {routes.map((route) => ((route?.user?.includes(role)) && (!route.logins || route.logins.includes(login)) &&
                             <Link
                                 key={route.href}
                                 href={route.href}
