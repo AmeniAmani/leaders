@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 
 // Suppression d'une absence par l'enseignant qui l'a saisie.
 // L'administration est alertée, surtout si le parent avait déjà été prévenu.
+// Un billet émis depuis ce signalement est annulé avec lui.
 const libelleType = (statut: string | null, minutes: number | null) =>
     statut === "exclusion" ? "l'exclusion"
     : statut === "retard" ? (minutes ? `le retard de ${minutes} min` : "le retard")
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
             include: {
                 student: { select: { firstName: true, lastName: true } },
                 classe: { select: { name: true, level: true } },
-                billet: { select: { id: true } },
+                billet: { select: { id: true, type: true } },
             }
         });
 
@@ -43,14 +44,6 @@ export async function POST(request: Request) {
                     { status: 403 }
                 );
             }
-        }
-
-        // Un billet a été émis depuis ce signalement : il reste au registre
-        if (absence.billet) {
-            return NextResponse.json(
-                { error: "Un billet a été émis pour ce signalement : il ne peut plus être modifié ni supprimé" },
-                { status: 409 }
-            );
         }
 
         const nomEleve = absence.student
@@ -69,8 +62,17 @@ export async function POST(request: Request) {
             : `à ${absence.hour || ""}`;
         const dejaEnvoyee = absence.validated === true;
         const typeTexte = libelleType(absence.status, absence.lateMinutes);
+        const billetTexte = absence.billet
+            ? ` Le ${absence.billet.type === "retard" ? "billet de retard" : "billet d'entrée"} émis pour ce signalement a été annulé.`
+            : "";
 
         await prisma.$transaction(async (tx) => {
+            // Le billet part avec le signalement, ainsi que ses notifications aux enseignants
+            if (absence.billet) {
+                await tx.teacherNotification.deleteMany({ where: { billetId: absence.billet.id } });
+                await tx.billet.delete({ where: { id: absence.billet.id } });
+            }
+
             await tx.absence.delete({ where: { id: absence.id } });
 
             // L'alerte de ce signalement disparaît avec lui
@@ -84,9 +86,9 @@ export async function POST(request: Request) {
                 data: {
                     type: dejaEnvoyee ? "absence_supprimee_envoyee" : "absence_supprimee",
                     message: dejaEnvoyee
-                        ? `${nameuser} a supprimé ${typeTexte} de ${nomEleve} (${nomClasse}) du ${dateStr} ${creneau}. ` +
+                        ? `${nameuser} a supprimé ${typeTexte} de ${nomEleve} (${nomClasse}) du ${dateStr} ${creneau}.${billetTexte} ` +
                           `⚠️ Le parent avait DÉJÀ été prévenu : la notification reste visible dans son application.`
-                        : `${nameuser} a supprimé ${typeTexte} de ${nomEleve} (${nomClasse}) du ${dateStr} ${creneau}. ` +
+                        : `${nameuser} a supprimé ${typeTexte} de ${nomEleve} (${nomClasse}) du ${dateStr} ${creneau}.${billetTexte} ` +
                           `Ce signalement n'avait pas encore été envoyé au parent.`,
                 }
             });
@@ -95,7 +97,8 @@ export async function POST(request: Request) {
             await tx.activity.create({
                 data: {
                     nameUser: nameuser,
-                    description: `a supprimé ${typeTexte} de ${nomEleve} du ${dateStr} ${creneau}.`,
+                    description: `a supprimé ${typeTexte} de ${nomEleve} du ${dateStr} ${creneau}.` +
+                        (absence.billet ? " Billet annulé." : ""),
                 }
             });
         });

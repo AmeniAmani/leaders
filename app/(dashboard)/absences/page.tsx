@@ -532,8 +532,12 @@ export default function AbsencesPage() {
             ? `\n\nAttention : ce signalement a déjà été transmis au parent. ` +
               `La supprimer ne retirera pas la notification déjà envoyée, et l'administration en sera informée.`
             : `\n\nL'administration en sera informée.`;
+        const avertissementBillet = absence.billet
+            ? `\n\n${absence.billet.type === "retard" ? "Un billet de retard" : "Un billet d'entrée"} a été émis pour ce signalement : ` +
+              `il sera annulé, et les enseignants qui l'ont reçu n'en seront plus notifiés.`
+            : "";
 
-        if (!window.confirm(`Supprimer le signalement (${libelleType(absence)}) de ${nom} du ${date} ?${avertissement}`)) return;
+        if (!window.confirm(`Supprimer le signalement (${libelleType(absence)}) de ${nom} du ${date} ?${avertissementBillet}${avertissement}`)) return;
 
         setDeletingId(absence.id);
         try {
@@ -766,7 +770,7 @@ export default function AbsencesPage() {
                     Billet
                 </button>
             )}
-            {!isAdmin && !absence.billet && (
+            {!isAdmin && (
                 <button
                     onClick={() => handleDelete(absence)}
                     disabled={deletingId === absence.id}
