@@ -6,6 +6,7 @@ import { UserCheck, ChevronRight, Loader2, AlertCircle, Download, Info } from "l
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
+import { effacerSession, ouvrirSessionProf } from "@/lib/session";
 
 export default function LoginProfPage() {
     const [login, setLogin] = useState("");
@@ -75,13 +76,13 @@ export default function LoginProfPage() {
                 return;
             }
 
-            // Session enseignant : 1 heure
-            const UNE_HEURE = 60 * 60;
-            document.cookie = `auth-token=authenticated; path=/; max-age=${UNE_HEURE}; SameSite=Lax`;
-            document.cookie = `user-name=${encodeURIComponent(userData.displayName)}; path=/; max-age=${UNE_HEURE}; SameSite=Lax`;
-            document.cookie = `user-id=${userData.id}; path=/; max-age=${UNE_HEURE}; SameSite=Lax`;
-            // Le role dure plus longtemps : a l'expiration, il permet de revenir sur /prof
-            document.cookie = `user-role=${userData.role}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+            // Session enseignant : fin après 1 heure sans activité (lib/session.ts)
+            effacerSession();
+            ouvrirSessionProf(userData);
+
+            // Tablette partagée : les champs sont vidés avant de quitter la page
+            setLogin("");
+            setPassword("");
 
             router.push("/dashboard");
         } catch (err: any) {
@@ -141,6 +142,7 @@ export default function LoginProfPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                         onSubmit={handleLogin}
+                        autoComplete="off"
                         className="space-y-5"
                     >
                         <div className="space-y-2">
@@ -148,6 +150,7 @@ export default function LoginProfPage() {
                             <input
                                 type="text"
                                 required
+                                autoComplete="off"
                                 value={login}
                                 onChange={(e) => setLogin(e.target.value)}
                                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
@@ -169,6 +172,7 @@ export default function LoginProfPage() {
                             <input
                                 type="password"
                                 required
+                                autoComplete="new-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"

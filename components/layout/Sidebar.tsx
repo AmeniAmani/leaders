@@ -24,9 +24,9 @@ import {
     MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useSidebar } from "./SidebarContext";
 import { useEffect, useState } from 'react';
+import { deconnecter, prolongerSessionProf, sessionProfExpiree } from "@/lib/session";
 
 const routes = [
     {
@@ -145,7 +145,6 @@ const routes = [
 
 export const Sidebar = () => {
     const pathname = usePathname();
-    const router = useRouter();
     const { isOpen, close } = useSidebar();
 
     const getCookie = (name: string) => {
@@ -163,20 +162,43 @@ export const Sidebar = () => {
         setRole(getCookie("user-role") ?? "N/A");
     }, []);
 
-    // Session enseignant : quand le cookie auth-token expire (1 heure),
-    // retour automatique vers la page de connexion enseignant.
+    // Session enseignant (tablette partagée) : déconnexion après 1 heure sans activité.
+    // Chaque toucher, clic, frappe ou défilement prolonge la session (au plus une fois
+    // par minute). Contrôle toutes les 30 s, au réveil de la tablette, au retour sur
+    // l'onglet et au bouton Retour du navigateur.
     useEffect(() => {
         if (role !== "prof") return;
 
         const verifier = () => {
-            if (!getCookie("auth-token")) {
-                window.location.href = "/prof";
-            }
+            if (sessionProfExpiree()) deconnecter("/prof");
         };
 
+        let derniereProlongation = 0;
+        const activite = () => {
+            if (Date.now() - derniereProlongation < 60000) return;
+            if (sessionProfExpiree()) return verifier();
+            derniereProlongation = Date.now();
+            prolongerSessionProf();
+        };
+
+        const auRetour = () => {
+            if (document.visibilityState === "visible") verifier();
+        };
+
+        const EVENEMENTS = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
         verifier();
         const timer = setInterval(verifier, 30000);
-        return () => clearInterval(timer);
+        EVENEMENTS.forEach(e => window.addEventListener(e, activite, { passive: true, capture: true }));
+        document.addEventListener("visibilitychange", auRetour);
+        window.addEventListener("pageshow", verifier);
+        window.addEventListener("focus", verifier);
+        return () => {
+            clearInterval(timer);
+            EVENEMENTS.forEach(e => window.removeEventListener(e, activite, { capture: true }));
+            document.removeEventListener("visibilitychange", auRetour);
+            window.removeEventListener("pageshow", verifier);
+            window.removeEventListener("focus", verifier);
+        };
     }, [role]);
 
     // Administration : demandes de réservation de salle en attente, en pastille sur « Salles ».
@@ -209,16 +231,8 @@ export const Sidebar = () => {
     const handleLogout = (e: React.MouseEvent) => {
         e.preventDefault();
 
-        // On retient l'espace avant d'effacer les cookies
-        const destination = role === "prof" ? "/prof" : "/login";
-
-        // Clear all session cookies
-        document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "user-name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "user-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "user-id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-
-        router.push(destination);
+        // Tous les cookies de session sont effacés, retour à la page de connexion de l'espace
+        deconnecter(role === "prof" ? "/prof" : "/login");
     };
 
     return (

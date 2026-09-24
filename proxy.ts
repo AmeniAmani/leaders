@@ -26,7 +26,9 @@ export function proxy(request: NextRequest) {
     }
 
     const authToken = request.cookies.get('auth-token');
-    const userRole = request.cookies.get('user-role')?.value;
+    // Sans session, « espace-connexion » (posé à la déconnexion) choisit la page de connexion
+    const userRole = request.cookies.get('user-role')?.value
+        ?? (request.cookies.get('espace-connexion')?.value === 'prof' ? 'prof' : undefined);
 
     // Pages de connexion publiques : /login (admin) et /prof (enseignant)
     const isPublicRoute = pathname === '/login' || pathname === '/prof';
