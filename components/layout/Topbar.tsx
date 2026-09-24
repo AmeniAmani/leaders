@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, Menu as MenuIcon, Loader2, User, GraduationCap, Users as UsersIcon, BookA, AlertTriangle } from "lucide-react";
+import { Bell, Search, Menu as MenuIcon, Loader2, User, GraduationCap, Users as UsersIcon, BookA, AlertTriangle, Clapperboard } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSidebar } from "./SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -307,7 +307,7 @@ export const Topbar = () => {
                                     className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50"
                                 >
                                     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                        <p className="font-bold text-slate-900 text-sm">{isAdmin ? "Alertes" : "Billets reçus"}</p>
+                                        <p className="font-bold text-slate-900 text-sm">{isAdmin ? "Alertes" : "Notifications"}</p>
                                         <span className="text-xs text-slate-500">
                                             {alerts.length} en attente
                                         </span>
@@ -323,10 +323,14 @@ export const Topbar = () => {
                                             <ul className="divide-y divide-slate-50">
                                                 {alerts.map((alert) => {
                                                     const estAbsence = (alert.type ?? "").startsWith("absence:") || alert.type === "billet";
+                                                    // Réservation de la salle de cinéma : la page des réservations
+                                                    const estReservation = (alert.type ?? "").startsWith("reservation");
                                                     return (
                                                         <li key={alert.id} className="p-3 flex gap-3 hover:bg-slate-50 transition-colors">
-                                                            <div className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center ${estAbsence ? "bg-red-50" : "bg-amber-50"}`}>
-                                                                {estAbsence
+                                                            <div className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center ${estReservation ? "bg-indigo-50" : estAbsence ? "bg-red-50" : "bg-amber-50"}`}>
+                                                                {estReservation
+                                                                    ? <Clapperboard className="h-4 w-4 text-indigo-500" />
+                                                                    : estAbsence
                                                                     ? <BookA className="h-4 w-4 text-red-500" />
                                                                     : <AlertTriangle className="h-4 w-4 text-amber-500" />}
                                                             </div>
@@ -336,7 +340,10 @@ export const Topbar = () => {
                                                                     onClick={() => {
                                                                         setShowAlerts(false);
                                                                         // L'enseignant retrouve l'élève dans sa feuille d'appel
-                                        router.push(isAdmin ? "/absences" : "/absences/new");
+                                        router.push(
+                                            estReservation ? (isAdmin ? "/rooms/reservations" : "/rooms/cinema") :
+                                            isAdmin ? "/absences" : "/absences/new"
+                                        );
                                                                     }}
                                                                     className="text-left text-sm text-slate-700 leading-snug hover:text-indigo-600 transition-colors"
                                                                 >

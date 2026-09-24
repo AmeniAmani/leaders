@@ -79,9 +79,9 @@ export function semaineAB(jour: string, reference: string): "A" | "B" {
 
 export type Cours = Awaited<ReturnType<typeof coursDuJour>>[number];
 
-// Cours d'une journée, pour une classe ou un enseignant, en tenant compte de
+// Cours d'une journée, pour une classe, un enseignant ou une salle, en tenant compte de
 // l'année scolaire et de la semaine A/B. Les doublons exacts sont écartés.
-export async function coursDuJour(filtre: { jour: string; classId?: number; teacherId?: number }) {
+export async function coursDuJour(filtre: { jour: string; classId?: number; teacherId?: number; roomId?: number }) {
     const semaine = semaineAB(filtre.jour, await referenceSemaineA());
     const lignes = await prisma.schedule.findMany({
         where: {
@@ -90,6 +90,7 @@ export async function coursDuJour(filtre: { jour: string; classId?: number; teac
             OR: [{ week: "all" }, { week: null }, { week: semaine }],
             ...(filtre.classId ? { classId: filtre.classId } : {}),
             ...(filtre.teacherId ? { teacherId: filtre.teacherId } : {}),
+            ...(filtre.roomId ? { roomId: filtre.roomId } : {}),
         },
         include: {
             teacher: { select: { id: true, name: true } },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, MapPin, Users, MoreVertical, LayoutGrid, List as ListIcon, Loader2, Eye } from "lucide-react";
+import { Search, Plus, MapPin, Users, MoreVertical, LayoutGrid, List as ListIcon, Loader2, Eye, Clapperboard } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -48,6 +48,16 @@ export default function RoomsPage() {
         }, []);
     let isReadOnly = role !== 'admin';
 
+    // Administration : demandes de réservation de la salle de cinéma en attente
+    const [demandesEnAttente, setDemandesEnAttente] = useState(0);
+    useEffect(() => {
+        if (role !== 'admin') return;
+        fetch('/api/reservations', { cache: 'no-store' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => setDemandesEnAttente(d?.enAttente || 0))
+            .catch(() => setDemandesEnAttente(0));
+    }, [role]);
+
     const filteredRooms = rooms.filter(room =>
         (room.name || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -77,10 +87,25 @@ export default function RoomsPage() {
                     <h1 className="text-3xl font-bold text-slate-900">Salles</h1>
                     <p className="text-slate-500 mt-1">Gestion des salles de classe et laboratoires.</p>
                 </div>
-                {!isReadOnly && <Link href="/rooms/new" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all active:scale-95">
-                    <Plus className="w-5 h-5" />
-                    Nouvelle Salle
-                </Link>}
+                <div className="flex flex-wrap items-center gap-3">
+                    {role === 'prof' && <Link href="/rooms/cinema" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all active:scale-95">
+                        <Clapperboard className="w-5 h-5" />
+                        Réserver la salle de cinéma
+                    </Link>}
+                    {role === 'admin' && <Link href="/rooms/reservations" className="relative bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-medium shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                        <Clapperboard className="w-5 h-5 text-indigo-500" />
+                        Réserver salle
+                        {demandesEnAttente > 0 && (
+                            <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center" title="Demandes en attente">
+                                {demandesEnAttente}
+                            </span>
+                        )}
+                    </Link>}
+                    {!isReadOnly && <Link href="/rooms/new" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all active:scale-95">
+                        <Plus className="w-5 h-5" />
+                        Nouvelle Salle
+                    </Link>}
+                </div>
             </div>
 
             {/* Controls */}

@@ -106,6 +106,7 @@ model Teacher {
   notifications TeacherNotification[]
   planings  Planing[]
   schedules Schedule[]
+  roomReservations RoomReservation[]
   subject   Subject?   @relation(fields: [subjectId], references: [id])
   user      User?
   classes   Class[]    @relation("ClassToTeacher")
@@ -128,6 +129,7 @@ model Class {
   teachers    Teacher[]    @relation("ClassToTeacher")
   teacherAbsences TeacherAbsence[] @relation("TeacherAbsenceToClass")
   billets     Billet[]
+  roomReservations RoomReservation[]
 
   chats Chat[]
   chatBlocked Boolean? @default(false)
@@ -141,6 +143,32 @@ model Room {
   status    String?
   schedules Schedule[]
   class     Class?
+  reservations RoomReservation[]
+}
+
+// Demande de réservation d'une salle (salle de cinéma) par un enseignant, pour une
+// date précise, 1 ou 2 heures consécutives. Confirmée seulement après validation
+// par l'administration.
+model RoomReservation {
+  id         Int       @id @default(autoincrement())
+  roomId     Int
+  teacherId  Int
+  classId    Int
+  date       DateTime  // le jour, à minuit UTC (même format que Absence.dateAbsence)
+  hour       String    // début : "10:00"
+  duration   Int       // 1 ou 2 heures
+  motif      String?
+  statut     String    @default("en_attente") // "en_attente" | "validee" | "refusee" | "annulee"
+  motifRefus String?
+  traiteAt   DateTime?
+  traitePar  String?
+  createdAt  DateTime  @default(now())
+  room       Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  teacher    Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classe     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, date])
+  @@index([teacherId])
 }
 
 model Schedule {
