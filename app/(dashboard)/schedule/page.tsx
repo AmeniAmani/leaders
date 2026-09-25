@@ -225,6 +225,24 @@ export default function SchedulePage() {
         });
     }, [entries, viewMode, selectedId, selectedAS]);
 
+    // Cours et bandes de chaque jour, et une hauteur commune à toute la semaine :
+    // le jour qui a le plus de cours superposés fixe la hauteur de tous les jours.
+    const { entriesByDay, bandsByDay, rowMinHeight } = useMemo(() => {
+        const entriesByDay: Record<string, ScheduleEntry[]> = {};
+        const bandsByDay: Record<string, Record<number, Band>> = {};
+        let maxBands = 1;
+        for (const day of DAYS) {
+            entriesByDay[day] = filteredEntries
+                .filter(item => item.day === day)
+                .sort((a, b) => a.start.localeCompare(b.start));
+            bandsByDay[day] = assignBands(entriesByDay[day]);
+            maxBands = Math.max(maxBands, ...Object.values(bandsByDay[day]).map(b => b.count));
+        }
+        // Une case partagée fait grandir la semaine pour que chaque bande garde son texte en entier
+        const rowMinHeight = maxBands > 1 ? Math.max(ROW_MIN_HEIGHT, maxBands * BAND_MIN_HEIGHT) : ROW_MIN_HEIGHT;
+        return { entriesByDay, bandsByDay, rowMinHeight };
+    }, [filteredEntries]);
+
     const handleAnneeScolaireChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedAS(e.target.value);
     };
@@ -592,19 +610,14 @@ export default function SchedulePage() {
                         </div>
 
                         {DAYS.map((day) => {
-                            const dayEntries = filteredEntries
-                                .filter(item => item.day === day)
-                                .sort((a, b) => a.start.localeCompare(b.start));
-                            const bands = assignBands(dayEntries);
-                            // Un jour dont une case est partagée grandit pour que chaque bande garde son texte en entier
-                            const maxBands = Math.max(1, ...Object.values(bands).map(b => b.count));
-                            const rowMinHeight = maxBands > 1 ? Math.max(ROW_MIN_HEIGHT, maxBands * BAND_MIN_HEIGHT) : ROW_MIN_HEIGHT;
+                            const dayEntries = entriesByDay[day];
+                            const bands = bandsByDay[day];
 
                             return (
                                 <div
                                     key={day}
                                     style={{ "--row-min": `${rowMinHeight}px` } as React.CSSProperties}
-                                    className={`grid ${GRID_COLS} grow min-h-[var(--row-min)] print:min-h-0 border-b border-slate-200 last:border-b-0 print-row`}
+                                    className={`grid ${GRID_COLS} flex-1 min-h-[var(--row-min)] print:min-h-0 border-b border-slate-200 last:border-b-0 print-row`}
                                 >
                                     {/* Colonne des jours */}
                                     <div className="col-start-1 row-start-1 sticky left-0 z-20 print:static bg-slate-100 border-r border-slate-300 flex items-center justify-center p-2">
