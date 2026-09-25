@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock, Check, X, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -524,8 +525,8 @@ export default function NewAbsencePage() {
                                     <span>Aucun cours à l&apos;emploi du temps en ce moment : choisissez la classe et la séance.</span>
                                 ) : coursActuels.length === 1 ? (
                                     <span>
-                                        Pré-rempli d&apos;après votre emploi du temps : {libelleClasse(classes.find(c => c.id === coursActuels[0].classId))}
-                                        {coursActuels[0].subjectName ? ` — ${coursActuels[0].subjectName}` : ""}, {coursActuels[0].hour} – {coursActuels[0].hourEnd}.
+                                        Pré-rempli d&apos;après votre emploi du temps : <bdi>{libelleClasse(classes.find(c => c.id === coursActuels[0].classId))}</bdi>
+                                        {coursActuels[0].subjectName && <> — <bdi>{coursActuels[0].subjectName}</bdi></>}, {coursActuels[0].hour} – {coursActuels[0].hourEnd}.
                                     </span>
                                 ) : (
                                     <>
@@ -541,7 +542,9 @@ export default function NewAbsencePage() {
                                                         : "bg-white border-indigo-200 hover:border-indigo-400"
                                                 }`}
                                             >
-                                                {libelleClasse(classes.find(cl => cl.id === c.classId))}{c.subjectName ? ` — ${c.subjectName}` : ""}
+                                                {/* Classe et matière sur deux lignes, chacune dans son sens d'écriture */}
+                                                <span dir="auto" className="block">{libelleClasse(classes.find(cl => cl.id === c.classId))}</span>
+                                                {c.subjectName && <span dir="auto" className="block">{c.subjectName}</span>}
                                             </button>
                                         ))}
                                     </>
@@ -614,7 +617,7 @@ export default function NewAbsencePage() {
                                         const name = libelleClasse(cls)
                                         return (
                                             <option key={cls.id} value={cls.id}>
-                                                {name}
+                                                {isoler(name)}
                                             </option>
                                         )
                                     })}

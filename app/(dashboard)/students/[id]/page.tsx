@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Upload, User, Calendar, Mail, Phone, MapPin, Trash2, Loader2, FolderOpen } from "lucide-react";
 import Link from "next/link";
@@ -194,7 +195,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                 <option value="">Choisir une classe</option>
                                 {classes.map((c: any) => {
                                     const name = (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : ""
-                                    return <option key={c.id} value={c.id}>{name}</option>
+                                    return <option key={c.id} value={c.id}>{isoler(name)}</option>
                                 })}
                             </select>
                         </div>

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { trierEleves } from '../../../../lib/eleves';
 import { NextResponse } from 'next/server'
 
@@ -70,7 +71,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         })
         if (salleOccupee) {
             return NextResponse.json(
-                { error: `Cette salle est déjà attribuée à la classe ${libelleClasse(salleOccupee.level, salleOccupee.name)}` },
+                { error: `Cette salle est déjà attribuée à la classe ${isoler(libelleClasse(salleOccupee.level, salleOccupee.name))}` },
                 { status: 400 }
             )
         }
@@ -89,7 +90,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         // 1. Log Activity
         const cookiesStore = cookies();
         const name = (await cookiesStore).get('user-name')?.value ?? "inconnu";
-        const namecl = libelleClasse(updatedClass.level, updatedClass.name)
+        const namecl = isoler(libelleClasse(updatedClass.level, updatedClass.name))
         await prisma.activity.create({
             data: {
                 nameUser: name,
@@ -114,7 +115,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
         // 1. Log Activity
         const cookiesStore = cookies();
         const name = (await cookiesStore).get('user-name')?.value ?? "inconnu";
-        const namecl = libelleClasse(deletedClass.level, deletedClass.name)
+        const namecl = isoler(libelleClasse(deletedClass.level, deletedClass.name))
         await prisma.activity.create({
             data: {
                 nameUser: name,

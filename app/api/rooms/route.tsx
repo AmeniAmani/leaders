@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
+import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server'
 import { anneeScolaire, maintenant } from '../../../lib/emploi-du-temps'
 
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
         await prisma.activity.create({
             data: {
                 nameUser: nameuser,
-                description: `a créé une salle ${room.name}.`,
+                description: `a créé une salle ${isoler(room.name)}.`,
             }
         });
         return NextResponse.json(room)

@@ -110,7 +110,7 @@ export default function SubjectsPage() {
                             </div>
 
                             <Link href={`/subjects/${subject.id}`} className="block">
-                                <h3 className="text-lg font-bold text-slate-900 mt-4 hover:text-indigo-600 transition-colors">{subject.name}</h3>
+                                <h3 className="text-lg font-bold text-slate-900 mt-4 hover:text-indigo-600 transition-colors"><bdi>{subject.name}</bdi></h3>
                             </Link>
 
                             {/* Volume horaire par niveau */}

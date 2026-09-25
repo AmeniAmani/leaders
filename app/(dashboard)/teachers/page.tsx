@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { Search, Plus, Mail, Phone, BookOpen, MoreHorizontal, LayoutGrid, Filter, Loader2 } from "lucide-react";
 import { filtreRecherche } from "@/lib/recherche";
@@ -115,7 +116,7 @@ export default function TeachersPage() {
                         <option value="">Toutes les matières</option>
 
                         {
-                            subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)
+                            subjects.map(subject => <option key={subject.id} value={subject.id}>{isoler(subject.name)}</option>)
                         }
                     </select>
                     </div>
@@ -145,7 +146,7 @@ export default function TeachersPage() {
                                         </Link> <br />
                                         <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium">
                                             <BookOpen className="w-3.5 h-3.5" />
-                                            {teacher.subject?.name || "N/A"}
+                                            <bdi>{teacher.subject?.name || "N/A"}</bdi>
                                         </div>
                                     </div>
 

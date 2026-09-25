@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Clapperboard, Loader2, Send, X } from "lucide-react";
@@ -160,7 +161,7 @@ export default function ReserverCinemaPage() {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <Clapperboard className="w-6 h-6 text-indigo-500" />
-                            Réserver la {data.salle.name || "salle de cinéma"}
+                            Réserver la <bdi>{data.salle.name || "salle de cinéma"}</bdi>
                         </h1>
                         <p className="text-slate-500 text-sm">
                             Choisissez une heure, ou deux heures de suite le même jour. La réservation est confirmée après validation par l&apos;administration.
@@ -200,7 +201,7 @@ export default function ReserverCinemaPage() {
                                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                             >
                                 <option value="">Sélectionner une classe...</option>
-                                {classes.map(c => <option key={c.id} value={c.id}>{libelleClasse(c)}</option>)}
+                                {classes.map(c => <option key={c.id} value={c.id}>{isoler(libelleClasse(c))}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1 flex-1">

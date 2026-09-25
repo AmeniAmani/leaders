@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server';
 import { rattacherAuPrevenu } from '../../../../lib/absences-parent';
 import { etatsAppel } from '../../../../lib/emploi-du-temps';
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
             where: { id: cid },
             select: { name: true, level: true }
         });
-        const nomClasse = classe ? libelleClasse(classe.level, classe.name) : `classe ID ${classId}`;
+        const nomClasse = classe ? isoler(libelleClasse(classe.level, classe.name)) : `classe ID ${classId}`;
 
         // Nom de l'enseignant et de sa matière
         const prof = teacherId
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
             })
             : null;
         const nomProf = prof?.name
-            ? (prof.subject?.name ? `${prof.name} (${prof.subject.name})` : prof.name)
+            ? (prof.subject?.name ? `${prof.name} (${isoler(prof.subject.name)})` : prof.name)
             : null;
 
         // Absences déjà enregistrées pour cette classe, cette date et cette heure

@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { X, Upload, Loader2, FileIcon, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -142,7 +143,7 @@ export default function RessouceModal({ isOpen, onClose, planingId, classId, tea
                                     <option value="">Toutes les classes</option>
                                     {classes.map((c) => {
                                         const name = (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : ""
-                                        return <option key={c.id} value={c.id}>{name}</option>
+                                        return <option key={c.id} value={c.id}>{isoler(name)}</option>
                                     })}
                                 </select>
                                 {isLoadingClasses && <p className="text-[10px] text-indigo-600 animate-pulse">Chargement des classes...</p>}

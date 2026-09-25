@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, MoreHorizontal, User, Eye, Phone, Trash2, Loader2, AlertTriangle, FolderOpen } from "lucide-react";
 import { filtreRecherche } from "@/lib/recherche";
@@ -166,11 +167,11 @@ export default function StudentsPage() {
                             <option value="">{isReadOnly ? "Mes classes" : "Toutes les classes"}</option>
                             {classes.map(c => (
                                 <option key={c.id} value={c.id}>
-                                    {c.level ? (
+                                    {isoler(c.level ? (
                                                     (c.level === "1" ? "السابعة أساسي " :
                                                         c.level === "2" ? "الثامنة أساسي " :
                                                             c.level === "3" ? "التاسعة أساسي " : "") + c.name
-                                                ) : "N/A"}
+                                                ) : "N/A")}
                                 </option>
                             ))}
                         </select>
@@ -231,7 +232,7 @@ export default function StudentsPage() {
                                                 ) : "Non assigné";
                                                 const badge = (
                                                     <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-medium border border-indigo-100">
-                                                        {label}
+                                                        <bdi>{label}</bdi>
                                                     </span>
                                                 );
                                                 return isReadOnly ? badge : (

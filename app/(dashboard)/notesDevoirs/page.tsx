@@ -1,5 +1,6 @@
 "use client"
 
+import { isoler } from "@/lib/bidi";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Search,
@@ -208,7 +209,7 @@ const VisualisationNotesPage = () => {
                                     const name = (cls.level === "1") ? "السابعة أساسي " + cls.name : (cls.level === "2") ? "الثامنة أساسي " + cls.name : (cls.level === "3") ? "التاسعة أساسي " + cls.name : cls.name;
                                     return (
                                         <option key={cls.id} value={cls.id}>
-                                            {name}
+                                            {isoler(name)}
                                         </option>
                                     )
                                 })}
@@ -231,7 +232,7 @@ const VisualisationNotesPage = () => {
                             >
                                 <option value="">Choisir Matière...</option>
                                 {filters.subjects.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                    <option key={s.id} value={s.id}>{isoler(s.name)}</option>
                                 ))}
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none group-focus-within:text-indigo-500" />

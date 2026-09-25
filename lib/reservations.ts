@@ -1,3 +1,4 @@
+import { isoler } from './bidi';
 import prisma from './prisma';
 import { anneeScolaire, coursDuJour, dateDuJour, enHeure, enMinutes, jourDe, maintenant } from './emploi-du-temps';
 
@@ -88,7 +89,7 @@ export async function conflit(
 ): Promise<string | null> {
     const cours = await coursDansLaSalle(roomId, jour);
     const c = cours.find(x => chevauche(debut, fin, x.debut, x.fin));
-    if (c) return `La salle est occupée par un cours (${c.classe}${c.matiere ? `, ${c.matiere}` : ""}) de ${enHeure(c.debut)} à ${enHeure(c.fin)}.`;
+    if (c) return `La salle est occupée par un cours (${isoler(c.classe)}${c.matiere ? `, ${isoler(c.matiere)}` : ""}) de ${enHeure(c.debut)} à ${enHeure(c.fin)}.`;
 
     const validees = await prisma.roomReservation.findMany({
         where: { roomId, date: dateDuJour(jour), statut: "validee", ...(saufId ? { id: { not: saufId } } : {}) },

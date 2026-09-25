@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Trash2, Loader2, CreditCard, Plus, Printer } from "lucide-react";
 import Link from "next/link";
@@ -257,7 +258,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                         {classes.map((c) => {
                                             const name = (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : c.name;
                                             return (
-                                                <option key={c.id} value={c.id}>{name}</option>
+                                                <option key={c.id} value={c.id}>{isoler(name)}</option>
                                             );
                                         })}
                                     </select>
@@ -469,7 +470,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                 {(() => {
                                     const c = classes.find(cls => cls.id === currentStudent.classId);
                                     if (!c) return "N/A";
-                                    return (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : c.name;
+                                    return <bdi>{(c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : c.name}</bdi>;
                                 })()}
                             </span>
                         </p>

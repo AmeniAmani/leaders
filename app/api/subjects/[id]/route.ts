@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import  prisma  from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server'
 
 // Un volume horaire valide, ou null si le niveau n'est pas concerné
@@ -83,7 +84,7 @@ export async function PUT(
         await prisma.activity.create({
             data: {
                 nameUser: nameuser,
-                description: `a modifié la matière ${subject.name} (${detail}).`,
+                description: `a modifié la matière ${isoler(subject.name)} (${detail}).`,
             }
         });
 
@@ -132,7 +133,7 @@ export async function DELETE(
         await prisma.activity.create({
             data: {
                 nameUser: nameuser,
-                description: `a supprimé la matière ${subject.name}.`,
+                description: `a supprimé la matière ${isoler(subject.name)}.`,
             }
         });
 

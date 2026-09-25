@@ -122,7 +122,7 @@ export default function ClassesPage() {
                                     href={`/classes/${cls.id}`}
                                     className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
                                 >
-                                    {libelleClasse(cls)}
+                                    <bdi>{libelleClasse(cls)}</bdi>
                                 </Link>
                             ))}
                         </div>
@@ -148,13 +148,13 @@ export default function ClassesPage() {
                                 )}
                             </div>
 
-                            <h3 className="text-xl font-bold text-slate-900 mb-1">{name}</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-1"><bdi>{name}</bdi></h3>
 
                             {/* Salle attitrée */}
                             <div className="flex items-center gap-1.5 text-sm mt-2">
                                 <MapPin className={`w-3.5 h-3.5 shrink-0 ${cls.room ? "text-slate-400" : "text-amber-500"}`} />
                                 {cls.room ? (
-                                    <span className="text-slate-500 font-medium">{cls.room.name}</span>
+                                    <span className="text-slate-500 font-medium"><bdi>{cls.room.name}</bdi></span>
                                 ) : (
                                     <span className="text-amber-700 font-medium">Aucune salle</span>
                                 )}

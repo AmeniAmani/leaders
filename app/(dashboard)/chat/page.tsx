@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect, useRef } from "react";
 import { Search, Send, Trash2, Loader2, Users, Globe, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -197,7 +198,7 @@ export default function ChatPage() {
                             <option value="global">Général (Tout le monde)</option>
                             <optgroup label="Classes">
                                 {classes.map(cls => (
-                                    <option key={cls.id} value={cls.id}>{formatClassName(cls)}</option>
+                                    <option key={cls.id} value={cls.id}>{isoler(formatClassName(cls))}</option>
                                 ))}
                             </optgroup>
                         </select>

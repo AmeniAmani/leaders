@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Save, CreditCard, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -179,7 +180,7 @@ export default function NewStudentPage() {
                                     {classes.map((c) => {
                                         const name = (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : c.name;
                                         return (
-                                            <option key={c.id} value={c.id}>{name}</option>
+                                            <option key={c.id} value={c.id}>{isoler(name)}</option>
                                         );
                                     })}
                                 </select>

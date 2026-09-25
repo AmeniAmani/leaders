@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Save, Upload, User, Mail, Phone, BookOpen, GraduationCap, School, AlertTriangle, X } from "lucide-react";
 import Link from "next/link";
@@ -97,10 +98,10 @@ export default function NewTeacherPage() {
 
         if (remplacements.length > 0) {
             const lignes = remplacements
-                .map((x) => `• ${classLabel(x.cls)} — ${x.conflict!.name || "un enseignant"}`)
+                .map((x) => `• ${isoler(classLabel(x.cls))} — ${x.conflict!.name || "un enseignant"}`)
                 .join("\n");
             const ok = window.confirm(
-                `Ces classes ont déjà un enseignant en ${subjectName} :\n\n${lignes}\n\n` +
+                `Ces classes ont déjà un enseignant en ${isoler(subjectName)} :\n\n${lignes}\n\n` +
                 `Voulez-vous les remplacer ? La classe leur sera retirée.`
             );
             if (!ok) return;
@@ -266,7 +267,7 @@ export default function NewTeacherPage() {
                                         <option value="">Sélectionner...</option>
                                         {subjects.map((subject) => (
                                             <option key={subject.id} value={subject.id}>
-                                                {subject.name}
+                                                {isoler(subject.name)}
                                             </option>
                                         ))}
                                     </select>
@@ -366,7 +367,7 @@ export default function NewTeacherPage() {
                                             key={c.id}
                                             className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-200"
                                         >
-                                            {classLabel(c)}
+                                            <bdi>{classLabel(c)}</bdi>
                                         </span>
                                     ))}
                             </div>
@@ -464,7 +465,7 @@ export default function NewTeacherPage() {
                                     <div>
                                         <h2 className="text-lg font-bold text-slate-900">Classes enseignées</h2>
                                         <p className="text-sm text-slate-500">
-                                            Matière : {subjectName}
+                                            Matière : <bdi>{subjectName}</bdi>
                                         </p>
                                     </div>
                                     <button
@@ -513,7 +514,7 @@ export default function NewTeacherPage() {
                                                             )}
                                                         </span>
                                                         <span className="min-w-0">
-                                                            <span className="block text-sm font-bold text-slate-800">{classLabel(cls)}</span>
+                                                            <span className="block text-sm font-bold text-slate-800"><bdi>{classLabel(cls)}</bdi></span>
                                                             {conflict && !checked && (
                                                                 <span className="block text-[11px] font-medium text-amber-700 mt-0.5">
                                                                     Déjà assurée par {conflict.name || "un enseignant"}

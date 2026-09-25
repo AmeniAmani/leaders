@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
+import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server'
 
 // Libellé arabe d'une classe, utilisé dans le journal d'activité
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
         })
         if (salleOccupee) {
             return NextResponse.json(
-                { error: `Cette salle est déjà attribuée à la classe ${libelleClasse(salleOccupee.level, salleOccupee.name)}` },
+                { error: `Cette salle est déjà attribuée à la classe ${isoler(libelleClasse(salleOccupee.level, salleOccupee.name))}` },
                 { status: 400 }
             )
         }
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
         // 1. Log Activity
         const cookiesStore = cookies();
         const name = (await cookiesStore).get('user-name')?.value ?? "inconnu";
-        const namecl = libelleClasse(newClass.level, newClass.name)
+        const namecl = isoler(libelleClasse(newClass.level, newClass.name))
         await prisma.activity.create({
             data: {
                 nameUser: name,

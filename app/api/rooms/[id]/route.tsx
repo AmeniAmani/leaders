@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -51,7 +52,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         await prisma.activity.create({
             data: {
                 nameUser: nameuser,
-                description: `a modifié une salle ${room.name}.`,
+                description: `a modifié une salle ${isoler(room.name)}.`,
             }
         });
         return NextResponse.json(room)
@@ -75,7 +76,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
         await prisma.activity.create({
             data: {
                 nameUser: nameuser,
-                description: `a supprimé une salle ${room.name}.`,
+                description: `a supprimé une salle ${isoler(room.name)}.`,
             }
         });
         return NextResponse.json(room)

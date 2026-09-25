@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
+import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server';
 
 const classLabel = (level: string | null, name: string | null) => {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
         ));
 
         // Message envoyé aux familles
-        const matiere = teacher.subject?.name ? `, professeur de ${teacher.subject.name},` : ",";
+        const matiere = teacher.subject?.name ? `, professeur de ${isoler(teacher.subject.name)},` : ",";
         const periode = surHeures
             ? `le ${fr(debut)} de ${hourStart} à ${hourEnd}`
             : debut.getTime() === fin.getTime()
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
             where: { id: { in: ids } },
             select: { id: true, name: true, level: true }
         });
-        const nomsClasses = classes.map(c => classLabel(c.level, c.name)).join(', ');
+        const nomsClasses = classes.map(c => isoler(classLabel(c.level, c.name))).join(', ');
 
         const created = await prisma.$transaction(async (tx) => {
             const absence = await tx.teacherAbsence.create({

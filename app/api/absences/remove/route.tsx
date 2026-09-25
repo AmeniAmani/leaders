@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server';
 
 // Suppression d'une absence par l'enseignant qui l'a saisie.
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
             absence.classe?.level === "1" ? "السابعة أساسي " :
             absence.classe?.level === "2" ? "الثامنة أساسي " :
             absence.classe?.level === "3" ? "التاسعة أساسي " : "";
-        const nomClasse = prefix + (absence.classe?.name || "");
+        const nomClasse = isoler(prefix + (absence.classe?.name || ""));
         const dateStr = absence.dateAbsence
             ? new Date(absence.dateAbsence).toLocaleDateString('fr-FR')
             : "";

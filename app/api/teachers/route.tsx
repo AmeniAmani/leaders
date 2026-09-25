@@ -1,4 +1,5 @@
 import prisma from '../../../lib/prisma';
+import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs';
 import { writeFile, mkdir } from 'fs/promises';
@@ -97,10 +98,10 @@ export async function POST(request: Request) {
                 for (const t of c.teachers) {
                     conflicts.push({
                         classId: c.id,
-                        className: classLabel(c.level, c.name),
+                        className: isoler(classLabel(c.level, c.name)),
                         teacherId: t.id,
                         teacherName: t.name || "Enseignant",
-                        subjectName: t.subject?.name || "cette matière",
+                        subjectName: isoler(t.subject?.name) || "cette matière",
                     })
                 }
             }

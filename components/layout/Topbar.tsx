@@ -1,5 +1,6 @@
 "use client";
 
+import { TexteMixte } from "@/components/ui/TexteMixte";
 import { Bell, Search, Menu as MenuIcon, Loader2, User, GraduationCap, Users as UsersIcon, BookA, AlertTriangle, Clapperboard, CalendarDays } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSidebar } from "./SidebarContext";
@@ -353,7 +354,7 @@ export const Topbar = () => {
                                                                     }}
                                                                     className="text-left text-sm text-slate-700 leading-snug hover:text-indigo-600 transition-colors"
                                                                 >
-                                                                    {alert.message}
+                                                                    <TexteMixte texte={alert.message} />
                                                                 </button>
                                                                 <div className="flex items-center justify-between mt-1">
                                                                     <span className="text-[11px] text-slate-400">

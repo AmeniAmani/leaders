@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server';
 import { enMinutes, jourDe, maintenant } from '../../../../lib/emploi-du-temps';
 import { chevauche, conflit, libelleClasse, libelleCreneau, nomSalle } from '../../../../lib/reservations';
@@ -33,7 +34,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         const debut = enMinutes(r.hour) ?? 0;
         const fin = debut + r.duration * 60;
         const creneau = libelleCreneau(r.date, r.hour, r.duration);
-        const salle = nomSalle(r.room);
+        const salle = isoler(nomSalle(r.room)); // uniquement pour les messages
         const { date: aujourdhui, minutes } = maintenant();
         const passee = jour < aujourdhui || (jour === aujourdhui && debut <= minutes);
 
@@ -119,7 +120,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
                     data: {
                         nameUser: nameuser,
                         description: `a ${action === "valider" ? "validé" : "refusé"} la réservation de la ${salle} ` +
-                            `par ${r.teacher.name || "un enseignant"} (${libelleClasse(r.classe)}) : ${creneau}.`,
+                            `par ${r.teacher.name || "un enseignant"} (${isoler(libelleClasse(r.classe))}) : ${creneau}.`,
                     },
                 });
                 return { refusees: refusees.length };
@@ -156,8 +157,8 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
                     data: {
                         type: `reservation_annulee:${r.id}`,
                         message: etaitValidee
-                            ? `${r.teacher.name || nameuser} a annulé sa réservation validée de la ${salle} (${libelleClasse(r.classe)}) : ${creneau}. Le créneau est libre.`
-                            : `${r.teacher.name || nameuser} a annulé sa demande de la ${salle} (${libelleClasse(r.classe)}) : ${creneau}.`,
+                            ? `${r.teacher.name || nameuser} a annulé sa réservation validée de la ${salle} (${isoler(libelleClasse(r.classe))}) : ${creneau}. Le créneau est libre.`
+                            : `${r.teacher.name || nameuser} a annulé sa demande de la ${salle} (${isoler(libelleClasse(r.classe))}) : ${creneau}.`,
                     },
                 });
                 await tx.activity.create({
@@ -212,7 +213,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
         }
 
         const creneau = libelleCreneau(r.date, r.hour, r.duration);
-        const salle = nomSalle(r.room);
+        const salle = isoler(nomSalle(r.room)); // uniquement pour les messages
 
         await prisma.$transaction(async (tx) => {
             // Seulement si elle est toujours refusée ou annulée
@@ -230,7 +231,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
                 data: {
                     nameUser: nameuser,
                     description: `a supprimé la demande ${r.statut === "refusee" ? "refusée" : "annulée"} de la ${salle} ` +
-                        `de ${r.teacher.name || "un enseignant"} (${libelleClasse(r.classe)}) : ${creneau}.`,
+                        `de ${r.teacher.name || "un enseignant"} (${isoler(libelleClasse(r.classe))}) : ${creneau}.`,
                 },
             });
         });

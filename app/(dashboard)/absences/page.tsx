@@ -1,5 +1,7 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
+import { TexteMixte } from "@/components/ui/TexteMixte";
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Send, CheckCircle2, Clock, Loader2, User, User2, GraduationCap, UserX, X, Save, CalendarDays, FileText, Trash2, BellRing, Check, ChevronDown, RefreshCw, Ticket, ClipboardCheck } from "lucide-react";
 import { estAlerteAbsence } from "@/lib/alertes";
@@ -759,7 +761,7 @@ export default function AbsencesPage() {
                 </div>
             )}
             <div className={isAdmin ? "text-xs text-slate-500 truncate" : "text-sm text-slate-700 truncate"}>
-                {absence.matiere || (isAdmin ? "" : "—")}
+                <bdi>{absence.matiere || (isAdmin ? "" : "—")}</bdi>
             </div>
         </div>
     );
@@ -892,7 +894,7 @@ export default function AbsencesPage() {
                         <div key={al.id} className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200">
                             <BellRing className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-rose-900">{al.message}</p>
+                                <p className="text-sm font-medium text-rose-900"><TexteMixte texte={al.message} /></p>
                                 <p className="text-xs text-rose-600/70 mt-1">
                                     {new Date(al.createdAt).toLocaleString("fr-FR")}
                                 </p>
@@ -1015,7 +1017,7 @@ export default function AbsencesPage() {
                             <option value={0}>Filtrer par classe</option>
                             {classes.map((cls) => (
                                 <option key={cls.id} value={cls.id}>
-                                    {classLabel(cls)}
+                                    {isoler(classLabel(cls))}
                                 </option>
                             ))}
                         </select>
@@ -1070,7 +1072,7 @@ export default function AbsencesPage() {
                                     className="hover:bg-slate-50/80 transition-colors group"
                                 >
                                     <td className="p-3 min-w-[84px]">
-                                        <span className="text-sm font-medium">{classLabel(absence.classe)}</span>
+                                        <span className="text-sm font-medium"><bdi>{classLabel(absence.classe)}</bdi></span>
                                     </td>
                                     <td className="p-3 min-w-[140px]">{blocEleve(absence)}</td>
                                     <td className="p-3">
@@ -1137,7 +1139,7 @@ export default function AbsencesPage() {
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className="text-sm text-slate-600">{ta.teacher?.subject?.name || "—"}</span>
+                                            <span className="text-sm text-slate-600"><bdi>{ta.teacher?.subject?.name || "—"}</bdi></span>
                                         </td>
                                         <td className="p-4">
                                             <span className="text-sm font-medium text-slate-700">
@@ -1155,7 +1157,7 @@ export default function AbsencesPage() {
                                             <div className="flex flex-wrap gap-1.5">
                                                 {ta.classes.map(c => (
                                                     <span key={c.id} className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100">
-                                                        {classLabel(c)}
+                                                        <bdi>{classLabel(c)}</bdi>
                                                     </span>
                                                 ))}
                                             </div>
@@ -1217,7 +1219,7 @@ export default function AbsencesPage() {
                                             <option value="">Sélectionner un enseignant...</option>
                                             {teachers.map((t) => (
                                                 <option key={t.id} value={t.id}>
-                                                    {t.name}{t.subject?.name ? ` — ${t.subject.name}` : ""}
+                                                    {t.name}{t.subject?.name ? ` — ${isoler(t.subject.name)}` : ""}
                                                 </option>
                                             ))}
                                         </select>
@@ -1366,7 +1368,7 @@ export default function AbsencesPage() {
                                                                 </svg>
                                                             )}
                                                         </span>
-                                                        <span className="text-sm font-bold text-slate-800">{classLabel(c)}</span>
+                                                        <span className="text-sm font-bold text-slate-800"><bdi>{classLabel(c)}</bdi></span>
                                                         {c.students && (
                                                             <span className="ml-auto text-xs text-slate-400">{c.students.length} élève(s)</span>
                                                         )}

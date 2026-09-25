@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Printer, FileDown, Loader2, CalendarDays, Users, School, ChevronDown } from "lucide-react";
 import Link from "next/link";
@@ -227,7 +228,7 @@ export default function FeuillePresencePage() {
                             >
                                 <option value="">Choisir une classe...</option>
                                 {classes.map(c => (
-                                    <option key={c.id} value={c.id}>{classLabel(c)}</option>
+                                    <option key={c.id} value={c.id}>{isoler(classLabel(c))}</option>
                                 ))}
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -297,7 +298,7 @@ export default function FeuillePresencePage() {
                                 </h2>
                             </div>
                             <div className="text-right shrink-0">
-                                <p className="text-xl font-black text-slate-900">{classLabel(data.classe)}</p>
+                                <p className="text-xl font-black text-slate-900"><bdi>{classLabel(data.classe)}</bdi></p>
                                 <p className="text-sm font-bold text-slate-600 mt-0.5">
                                     {data.jour} {new Date(data.date).toLocaleDateString("fr-FR")}
                                 </p>
@@ -346,7 +347,7 @@ export default function FeuillePresencePage() {
                                             <th key={`s-${c.hour}`} className={`border border-slate-300 px-2 py-1 text-center text-[10px] font-medium leading-tight ${
                                                 c.couvert === false ? "bg-slate-50 text-slate-300" : "bg-indigo-50/50 text-indigo-700/80"
                                             }`}>
-                                                {c.subjectName || ""}
+                                                <bdi>{c.subjectName || ""}</bdi>
                                             </th>
                                         ))}
                                     </tr>

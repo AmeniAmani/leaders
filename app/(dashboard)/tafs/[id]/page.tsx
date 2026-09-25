@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Trash2, Loader2, BookOpen } from "lucide-react";
 import Link from "next/link";
@@ -175,7 +176,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                 >
                                     <option value="">Sélectionner une matière...</option>
                                     {subjects.map((subject) => (
-                                        <option key={subject.id} value={subject.id}>{subject.name}</option>
+                                        <option key={subject.id} value={subject.id}>{isoler(subject.name)}</option>
                                     ))}
                                 </select>
                             </div>
@@ -191,11 +192,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                     <option value="">Sélectionner une classe...</option>
                                     {classes.map((classe) => (
                                         <option key={classe.id} value={classe.id}>
-                                            {classe.level ? (
+                                            {isoler(classe.level ? (
                                                 (classe.level === "1" ? "السابعة أساسي " :
                                                     classe.level === "2" ? "الثامنة أساسي " :
                                                         classe.level === "3" ? "التاسعة أساسي " : "") + classe.name
-                                            ) : classe.name}
+                                            ) : classe.name)}
                                         </option>
                                     ))}
                                 </select>

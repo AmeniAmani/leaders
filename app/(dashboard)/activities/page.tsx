@@ -1,5 +1,6 @@
 "use client";
 
+import { TexteMixte } from "@/components/ui/TexteMixte";
 import { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Loader2, Activity as ActivityIcon, User, CalendarDays, X } from "lucide-react";
 import { motion } from "framer-motion";
@@ -228,7 +229,7 @@ export default function ActivitiesPage() {
                                                     {a.nameUser || "Non assigné"}
                                                 </span>
                                             </div>
-                                            <span className="text-sm font-medium flex-1">{a.description}</span>
+                                            <span className="text-sm font-medium flex-1"><TexteMixte texte={a.description} /></span>
                                         </li>
                                     );
                                 })}

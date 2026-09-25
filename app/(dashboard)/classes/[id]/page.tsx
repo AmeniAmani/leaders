@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, School, Trash2, User, Eye, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -209,7 +210,7 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                         >
                             <option value="">Sélectionner une salle...</option>
                             {rooms.map((r) => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
+                                <option key={r.id} value={r.id}>{isoler(r.name)}</option>
                             ))}
                         </select>
                         {!roomId && (

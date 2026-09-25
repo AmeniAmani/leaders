@@ -1,5 +1,6 @@
 "use client";
 
+import { TexteMixte } from "@/components/ui/TexteMixte";
 import { Users, UserCheck, GraduationCap, School, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -180,7 +181,7 @@ export default function DashboardPage() {
                                     {i.nameUser.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-800">{i.nameUser} {i.description}</p>
+                                    <p className="text-sm font-medium text-slate-800">{i.nameUser} <TexteMixte texte={i.description} /></p>
                                     <p className="text-xs text-slate-400">Le {new Date(i.dateActivity).toLocaleDateString("fr-FR")} à {new Date(i.dateActivity).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
                                 </div>
                             </div>

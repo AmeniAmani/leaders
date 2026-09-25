@@ -1,3 +1,4 @@
+import { isoler } from './bidi';
 import type { Prisma } from './generated/prisma/client';
 import { enHeure, maintenant } from './emploi-du-temps';
 import { libelleClasse } from './reservations';
@@ -27,7 +28,7 @@ export async function alerterRepartition(
         : null;
 
     const qui = `${teacher?.gender === "f" ? "L'enseignante" : "L'enseignant"} ${teacher?.name || "inconnu"}`.trim();
-    const pour = classe ? `pour la classe ${libelleClasse(classe).trim()}` : "(sans classe)";
+    const pour = classe ? `pour la classe ${isoler(libelleClasse(classe).trim())}` : "(sans classe)";
 
     await tx.adminAlert.create({
         data: {

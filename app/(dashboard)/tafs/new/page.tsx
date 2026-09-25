@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Save, BookOpen } from "lucide-react";
 import Link from "next/link";
@@ -129,7 +130,7 @@ export default function NewStudentPage() {
                                 >
                                     <option value="">Sélectionner une Matière...</option>
                                     {subjects.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{isoler(p.name)}</option>
                                     ))}
                                 </select>
                             </div>
@@ -144,11 +145,11 @@ export default function NewStudentPage() {
                                     <option value="">Sélectionner une Classe...</option>
                                     {classes.map((p) => (
                                         <option key={p.id} value={p.id}>
-                                            {p.level ? (
+                                            {isoler(p.level ? (
                                                 (p.level === "1" ? "السابعة أساسي " :
                                                     p.level === "2" ? "الثامنة أساسي " :
                                                         p.level === "3" ? "التاسعة أساسي " : "") + p.name
-                                            ) : p.name}
+                                            ) : p.name)}
                                         </option>
                                     ))}
                                 </select>

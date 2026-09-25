@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
+import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server';
 import { dateDuJour, enHeure, enMinutes, maintenant } from '../../../lib/emploi-du-temps';
 import {
@@ -178,12 +179,12 @@ export async function POST(request: Request) {
             await tx.adminAlert.create({
                 data: {
                     type: `reservation:${r.id}`,
-                    message: `${r.teacher.name || nameuser} demande la ${nomSalle(salle)} ` +
-                        `(${libelleClasse(r.classe)}) : ${creneau}.${motif ? ` Motif : ${motif}` : ""}`,
+                    message: `${r.teacher.name || nameuser} demande la ${isoler(nomSalle(salle))} ` +
+                        `(${isoler(libelleClasse(r.classe))}) : ${creneau}.${motif ? ` Motif : ${motif}` : ""}`,
                 },
             });
             await tx.activity.create({
-                data: { nameUser: nameuser, description: `a demandé la ${nomSalle(salle)} : ${creneau}.` },
+                data: { nameUser: nameuser, description: `a demandé la ${isoler(nomSalle(salle))} : ${creneau}.` },
             });
             return r;
         });

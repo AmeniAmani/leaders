@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Plus, X, BookOpen, User, Home, Layers, Trash2, Pencil, Printer, Loader2, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,8 +25,6 @@ const NIVEAUX: Record<string, string> = {
 // « السابعة أساسي 1 » : écrit dans l'ordre de lecture, le navigateur l'affiche de droite à gauche
 const libelleClasse = (c?: { level: string; name: string } | null) =>
     c ? `${NIVEAUX[c.level] ?? ""} ${c.name}`.trim() : "";
-// Isole un morceau de texte (arabe ou latin) pour qu'il ne se mélange pas avec ses voisins
-const isoler = (texte: string) => `\u2068${texte}\u2069`;
 
 // "08:30" -> 8.5
 const decimalHour = (start: string) =>
@@ -347,12 +346,12 @@ export default function SchedulePage() {
                                             "3": "التاسعة أساسي",
                                         };
 
-                                        return `${levels[c.level]} ${c.name}`;
+                                        return <bdi>{`${levels[c.level]} ${c.name}`}</bdi>;
                                     })()
                                 ) : viewMode === "teacher" ? (
                                     teachers.find(t => String(t.id) === selectedId)?.name ?? "Aucun sélectionné"
                                 ) : (
-                                    rooms.find(r => String(r.id) === selectedId)?.name ?? "Aucun sélectionné"
+                                    <bdi>{rooms.find(r => String(r.id) === selectedId)?.name ?? "Aucun sélectionné"}</bdi>
                                 )
                             ) : (
                                 "Aucun sélectionné"
@@ -519,11 +518,11 @@ export default function SchedulePage() {
                         >
                             <option value="">Sélectionner {viewMode === "class" ? "une classe" : viewMode === "teacher" ? "un enseignant" : "une salle"}...</option>
                             {viewMode === "class" ? (
-                                classes.map(c => <option key={c.id} value={c.id}>{(c.level === "1") ? `السابعة أساسي ${c.name}` : (c.level === "2") ? `الثامنة أساسي ${c.name}` : (c.level === "3") ? `التاسعة أساسي ${c.name}` : ""}</option>)
+                                classes.map(c => <option key={c.id} value={c.id}>{isoler(libelleClasse(c))}</option>)
                             ) : viewMode === "teacher" ? (
                                 teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)
                             ) : (
-                                rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)
+                                rooms.map(r => <option key={r.id} value={r.id}>{isoler(r.name)}</option>)
                             )}
                         </select>
                     ) : (
@@ -773,7 +772,7 @@ export default function SchedulePage() {
                                         >
                                             <option value="">Sélectionner une matière...</option>
                                             {subjects.map(s => (
-                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                                <option key={s.id} value={s.id}>{isoler(s.name)}</option>
                                             ))}
                                         </select>
                                     )}
@@ -837,7 +836,7 @@ export default function SchedulePage() {
                                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
                                             >
                                                 <option value="">Sélectionner une salle...</option>
-                                                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                                {rooms.map(r => <option key={r.id} value={r.id}>{isoler(r.name)}</option>)}
                                             </select>
                                         )}
                                     </div>
@@ -869,7 +868,7 @@ export default function SchedulePage() {
                                             >
                                                 <option value="">Choisir...</option>
                                                 {classes.map(c => <option key={c.id} value={c.id}>
-                                                    {(c.level === "1") ? `السابعة أساسي ${c.name}` : (c.level === "2") ? `الثامنة أساسي ${c.name}` : (c.level === "3") ? `التاسعة أساسي ${c.name}` : ""}
+                                                    {isoler(libelleClasse(c))}
                                                 </option>)}
                                             </select>
                                         </div>
@@ -900,7 +899,7 @@ export default function SchedulePage() {
                                         >
                                             <option value="">Sélectionner une classe...</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>
-                                                {(c.level === "1") ? `السابعة أساسي ${c.name}` : (c.level === "2") ? `الثامنة أساسي ${c.name}` : (c.level === "3") ? `التاسعة أساسي ${c.name}` : ""}
+                                                {isoler(libelleClasse(c))}
                                             </option>)}
                                         </select>
                                     </div>

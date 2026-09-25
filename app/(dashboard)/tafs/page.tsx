@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Eye, Trash2, Loader2, BookOpen } from "lucide-react";
 import Link from "next/link";
@@ -149,7 +150,7 @@ export default function TafsPage() {
                             <option value="">{isAdmin ? "Toutes les classes" : "Mes classes"}</option>
                             {classes.map(c => (
                                 <option key={c.id} value={c.id}>
-                                    {classLabel(c)}
+                                    {isoler(classLabel(c))}
                                 </option>
                             ))}
                         </select>
@@ -188,14 +189,14 @@ export default function TafsPage() {
                                                         <div className="p-1.5 bg-slate-100 rounded-full transition-colors">
                                                             <BookOpen className="w-3.5 h-3.5" />
                                                         </div>
-                                                        <span className="text-sm font-medium">{taf.subject.name}</span>
+                                                        <span className="text-sm font-medium"><bdi>{taf.subject.name}</bdi></span>
                                                     </Link>
                                                 ) : (
                                                     <div className="flex items-center gap-2 text-slate-600">
                                                         <div className="p-1.5 bg-slate-100 rounded-full">
                                                             <BookOpen className="w-3.5 h-3.5" />
                                                         </div>
-                                                        <span className="text-sm font-medium">{taf.subject.name}</span>
+                                                        <span className="text-sm font-medium"><bdi>{taf.subject.name}</bdi></span>
                                                     </div>
                                                 )
                                             ) : (
@@ -204,7 +205,7 @@ export default function TafsPage() {
                                         </td>
                                         {/* Classe */}
                                         <td className="p-4">
-                                            <span className="text-sm font-medium">{classLabel(taf.class)}</span>
+                                            <span className="text-sm font-medium"><bdi>{classLabel(taf.class)}</bdi></span>
                                         </td>
                                         {/* Type */}
                                         <td className="p-4">

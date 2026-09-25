@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { NextResponse } from 'next/server';
 
 // L'enseignant du cours où l'élève se présente avec son billet d'entrée :
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
             billet.classe.level === "1" ? "السابعة أساسي " :
             billet.classe.level === "2" ? "الثامنة أساسي " :
             billet.classe.level === "3" ? "التاسعة أساسي " : "";
-        const nomClasse = prefix + billet.classe.name;
+        const nomClasse = isoler(prefix + billet.classe.name);
         const cours = billet.hour ? `au cours de ${billet.hour}` : "";
         const statut = arrive ? "valide" : "non_arrive";
 

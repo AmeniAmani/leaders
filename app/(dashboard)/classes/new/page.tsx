@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Save, School, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -137,7 +138,7 @@ export default function NewClassPage() {
                                 {isLoadingRooms ? "Chargement des salles..." : "Sélectionner une salle..."}
                             </option>
                             {rooms.map((r) => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
+                                <option key={r.id} value={r.id}>{isoler(r.name)}</option>
                             ))}
                         </select>
                         {!isLoadingRooms && rooms.length === 0 && (

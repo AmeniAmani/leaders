@@ -233,8 +233,8 @@ export default function AppelsDuJourPage() {
                                                 <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">
                                                     {enHeure(c.debut)} – {enHeure(c.fin)}
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{classLabel(c.classe)}</td>
-                                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{c.subjectName || "—"}</td>
+                                                <td className="px-4 py-3 text-slate-700 whitespace-nowrap"><bdi>{classLabel(c.classe)}</bdi></td>
+                                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap"><bdi>{c.subjectName || "—"}</bdi></td>
                                                 <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{c.teacher?.name || "—"}</td>
                                                 <td className="px-4 py-3 whitespace-nowrap"><Badge statut={c.statut} /></td>
                                                 <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
@@ -327,7 +327,7 @@ export default function AppelsDuJourPage() {
                                             {data.horsEmploiDuTemps.map(a => (
                                                 <tr key={a.id}>
                                                     <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">{a.hour} – {a.hourEnd}</td>
-                                                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{classLabel(a.classe)}</td>
+                                                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap"><bdi>{classLabel(a.classe)}</bdi></td>
                                                     <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{a.teacherName || "—"}</td>
                                                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                                                         <span className="font-medium text-slate-800">{a.faitPar}</span>

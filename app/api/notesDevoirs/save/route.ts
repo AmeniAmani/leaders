@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { isoler } from '../../../../lib/bidi';
 import { notifyParentsOfStudent } from '../../../../lib/notifications';
 
 export async function POST(request: Request) {
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
         // Trigger notifications after successful save
         for (const n of notes) {
             const studentName = studentMap.get(n.studentId) || "votre enfant";
-            const subjectName = subject?.name || "une matière";
+            const subjectName = isoler(subject?.name) || "une matière";
             let title = "";
             let message = "";
 

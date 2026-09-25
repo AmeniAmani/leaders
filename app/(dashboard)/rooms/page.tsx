@@ -164,7 +164,7 @@ export default function RoomsPage() {
                             </div>
 
                             <Link href={`/rooms/${room.id}`} className="block">
-                                <h3 className="text-xl font-bold text-slate-900 mb-1 hover:text-indigo-600 transition-colors">{room.name}</h3>
+                                <h3 className="text-xl font-bold text-slate-900 mb-1 hover:text-indigo-600 transition-colors"><bdi>{room.name}</bdi></h3>
                             </Link>
                             <p className="text-slate-500 text-sm mb-4">{room.type === "Classroom" ? "Salle de Classe" : room.type === "Laboratory" ? "Laboratoire" : "Amphithéâtre"}</p>
 
@@ -192,7 +192,7 @@ export default function RoomsPage() {
                                 <tr key={room.id} className="hover:bg-slate-50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <Link href={`/rooms/${room.id}`} className="font-bold text-slate-900 hover:text-indigo-600 transition-colors">
-                                            {room.name}
+                                            <bdi>{room.name}</bdi>
                                         </Link>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">{room.type === "Classroom" ? "Salle de Classe" : room.type === "Laboratory" ? "Laboratoire" : "Amphithéâtre"}</td>

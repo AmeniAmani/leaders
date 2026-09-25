@@ -199,7 +199,7 @@ export default function ReservationsSallePage() {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <Clapperboard className="w-6 h-6 text-indigo-500" />
-                            Réservations — {data.salle.name || "Salle de cinéma"}
+                            Réservations — <bdi>{data.salle.name || "Salle de cinéma"}</bdi>
                         </h1>
                         <p className="text-slate-500 text-sm">
                             Une réservation n&apos;est confirmée qu&apos;après votre validation. Cliquez sur une demande pour la voir dans la grille.

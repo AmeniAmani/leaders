@@ -1,5 +1,6 @@
 "use client";
 
+import { isoler } from "@/lib/bidi";
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Eye, Trash2, Loader2, BookOpen, Save, LibraryBig, Calendar, Clock, ChevronRight, Edit3, Trash, Paperclip } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -337,7 +338,7 @@ export default function PlaningPage() {
                             <option value="" className="text-slate-900">Choisir une classe</option>
                             {classes.map((c) => {
                                 const name = (c.level === "1") ? "السابعة أساسي " + c.name : (c.level === "2") ? "الثامنة أساسي " + c.name : (c.level === "3") ? "التاسعة أساسي " + c.name : c.name;
-                                return <option key={c.id} value={c.id.toString()} className="text-slate-900">{name}</option>;
+                                return <option key={c.id} value={c.id.toString()} className="text-slate-900">{isoler(name)}</option>;
                             })}
                         </select>
                     </div>
