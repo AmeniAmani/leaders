@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, MoreHorizontal, User, Eye, Phone, Trash2, Loader2, AlertTriangle, FolderOpen } from "lucide-react";
+import { filtreRecherche } from "@/lib/recherche";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -91,8 +92,13 @@ export default function StudentsPage() {
         }
     };
 
+    // Nom de l'élève, noms des tuteurs, téléphones de l'élève et des parents
+    const correspond = filtreRecherche(searchTerm);
     const filteredStudents = students.filter(student => {
-        const matchesSearch = `${student.firstName || ''} ${student.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = correspond(
+            [student.firstName, student.lastName, student.parent?.name1, student.parent?.name2],
+            [student.phone, student.parent?.phone1, student.parent?.phone2],
+        );
         const matchesClass = selectedClass ? String(student.classId) === selectedClass : true;
         return matchesSearch && matchesClass;
     });

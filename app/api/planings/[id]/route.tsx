@@ -1,6 +1,7 @@
 import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { alerterRepartition } from '../../../../lib/alertes-repartition';
 
 export async function GET(
     request: Request,
@@ -30,28 +31,38 @@ export async function PUT(
         const data = await request.json();
         const { teacherId, as, type, datePlaning, description, name, classId } = data;
 
-        const planing = await prisma.planing.update({
-            where: { id },
-            data: {
-                teacherId: teacherId ? parseInt(teacherId) : undefined,
-                as,
-                type,
-                datePlaning: datePlaning ? new Date(datePlaning) : undefined,
-                description,
-                name,
-                classId: classId ? parseInt(classId) : null,
-            },
-            include: { teacher: true }
-        });
+        const cookiesStore = await cookies();
+        const nameuser = cookiesStore.get('user-name')?.value;
+        const session = {
+            role: String(cookiesStore.get('user-role')?.value || ""),
+            userId: Number(cookiesStore.get('user-id')?.value) || 0,
+        };
 
-        // Log Activity
-        const cookiesStore = cookies();
-        const nameuser = (await cookiesStore).get('user-name')?.value;
-        await prisma.activity.create({
-            data: {
-                nameUser: nameuser || 'System',
-                description: `a modifié une répartition pour: ${planing.teacher?.name || 'Inconnu'}.`,
-            }
+        const planing = await prisma.$transaction(async (tx) => {
+            const p = await tx.planing.update({
+                where: { id },
+                data: {
+                    teacherId: teacherId ? parseInt(teacherId) : undefined,
+                    as,
+                    type,
+                    datePlaning: datePlaning ? new Date(datePlaning) : undefined,
+                    description,
+                    name,
+                    classId: classId ? parseInt(classId) : null,
+                },
+                include: { teacher: true }
+            });
+
+            // Log Activity
+            await tx.activity.create({
+                data: {
+                    nameUser: nameuser || 'System',
+                    description: `a modifié une répartition pour: ${p.teacher?.name || 'Inconnu'}.`,
+                }
+            });
+
+            await alerterRepartition(tx, session, "modification", p);
+            return p;
         });
 
         return NextResponse.json(planing);
@@ -66,19 +77,29 @@ export async function DELETE(
 ) {
     try {
         const id = parseInt((await params).id);
-        const planing = await prisma.planing.delete({
-            where: { id },
-            include: { teacher: true }
-        });
+        const cookiesStore = await cookies();
+        const nameuser = cookiesStore.get('user-name')?.value;
+        const session = {
+            role: String(cookiesStore.get('user-role')?.value || ""),
+            userId: Number(cookiesStore.get('user-id')?.value) || 0,
+        };
 
-        // Log Activity
-        const cookiesStore = cookies();
-        const nameuser = (await cookiesStore).get('user-name')?.value;
-        await prisma.activity.create({
-            data: {
-                nameUser: nameuser || 'System',
-                description: `a supprimé une répartition pour: ${planing.teacher?.name || 'Inconnu'}.`,
-            }
+        await prisma.$transaction(async (tx) => {
+            const p = await tx.planing.delete({
+                where: { id },
+                include: { teacher: true }
+            });
+
+            // Log Activity
+            await tx.activity.create({
+                data: {
+                    nameUser: nameuser || 'System',
+                    description: `a supprimé une répartition pour: ${p.teacher?.name || 'Inconnu'}.`,
+                }
+            });
+
+            // Classe et enseignant relus sur la ligne supprimée, renvoyée par delete
+            await alerterRepartition(tx, session, "suppression", p);
         });
 
         return NextResponse.json({ message: 'Planing deleted' });

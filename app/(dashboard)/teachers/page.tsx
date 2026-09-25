@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Plus, Mail, Phone, BookOpen, MoreHorizontal, LayoutGrid, Filter, Loader2 } from "lucide-react";
+import { filtreRecherche } from "@/lib/recherche";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -58,9 +59,10 @@ export default function TeachersPage() {
         }, []);
     let isReadOnly = role !== 'admin';
 
+    // Nom (ou identifiant), matière et téléphone
+    const correspond = filtreRecherche(searchTerm);
     const filteredTeachers = teachers.filter(teacher =>
-       ( (teacher.name || teacher.user?.login || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (teacher.subject?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ) &&
+        correspond([teacher.name || teacher.user?.login, teacher.subject?.name], [teacher.phone]) &&
         (selectedSubject ? teacher.subjectId === Number(selectedSubject) : true)
     );
 

@@ -17,6 +17,7 @@ import {
     XCircle,
     RotateCcw
 } from 'lucide-react';
+import { filtreRecherche } from '@/lib/recherche';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface StudentData {
@@ -198,9 +199,8 @@ const SaisieNotesPage = () => {
     };
 
     const filteredStudents = useMemo(() => {
-        return students.filter(s =>
-            s.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const correspond = filtreRecherche(searchTerm);
+        return students.filter(s => correspond([s.name]));
     }, [students, searchTerm]);
 
     const hasChanges = JSON.stringify(students) !== JSON.stringify(initialStudents);

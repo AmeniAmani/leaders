@@ -15,6 +15,7 @@ import {
     FileText,
     TrendingUp
 } from 'lucide-react';
+import { filtreRecherche } from '@/lib/recherche';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -134,9 +135,8 @@ const VisualisationNotesPage = () => {
     }, [selectedAS, selectedClass, selectedSubject, selectedPeriod]);
 
     const filteredStudents = useMemo(() => {
-        return students.filter(s =>
-            s.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const correspond = filtreRecherche(searchTerm);
+        return students.filter(s => correspond([s.name]));
     }, [students, searchTerm]);
 
     return (

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Send, CheckCircle2, Clock, Loader2, User, User2, GraduationCap, UserX, X, Save, CalendarDays, FileText, Trash2, BellRing, Check, ChevronDown, RefreshCw, Ticket, ClipboardCheck } from "lucide-react";
+import { estAlerteAbsence } from "@/lib/alertes";
+import { filtreRecherche } from "@/lib/recherche";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -178,7 +180,8 @@ export default function AbsencesPage() {
                 const alertsRes = await fetch('/api/admin-alerts');
                 if (alertsRes.ok) {
                     const aData = await alertsRes.json();
-                    setAlerts(Array.isArray(aData) ? aData : []);
+                    // Bandeau : alertes d'absence seulement (réservations et répartitions : cloche)
+                    setAlerts(Array.isArray(aData) ? aData.filter((a: { type?: string | null }) => estAlerteAbsence(a.type)) : []);
                 }
             }
 
@@ -222,7 +225,7 @@ export default function AbsencesPage() {
                 const alertsRes = await fetch('/api/admin-alerts');
                 if (alertsRes.ok) {
                     const aData = await alertsRes.json();
-                    setAlerts(Array.isArray(aData) ? aData : []);
+                    setAlerts(Array.isArray(aData) ? aData.filter((a: { type?: string | null }) => estAlerteAbsence(a.type)) : []);
                 }
 
                 const taRes = await fetch('/api/teacher-absences');
@@ -568,9 +571,9 @@ export default function AbsencesPage() {
         }
     };
 
+    const correspond = filtreRecherche(searchTerm);
     const filteredabsences = absences.filter(absence => {
-        const matchesSearch = `${absence.student?.firstName || ''} ${absence.student?.lastName || ''}`
-            .toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = correspond([absence.student?.firstName, absence.student?.lastName]);
         const matchesClass = selectedClass !== 0 ? absence.classId === selectedClass : true;
         const matchesStatus =
             statusFilter === "all" ? true :

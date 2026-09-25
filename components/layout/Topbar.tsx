@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, Search, Menu as MenuIcon, Loader2, User, GraduationCap, Users as UsersIcon, BookA, AlertTriangle, Clapperboard } from "lucide-react";
+import { Bell, Search, Menu as MenuIcon, Loader2, User, GraduationCap, Users as UsersIcon, BookA, AlertTriangle, Clapperboard, CalendarDays } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSidebar } from "./SidebarContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
+import { estAlerteAbsence, estAlerteRepartition, estAlerteReservation } from "@/lib/alertes";
 
 interface AdminAlertItem {
     id: number;
@@ -322,13 +323,17 @@ export const Topbar = () => {
                                         ) : (
                                             <ul className="divide-y divide-slate-50">
                                                 {alerts.map((alert) => {
-                                                    const estAbsence = (alert.type ?? "").startsWith("absence:") || alert.type === "billet";
+                                                    const estAbsence = estAlerteAbsence(alert.type);
                                                     // Réservation de la salle de cinéma : la page des réservations
-                                                    const estReservation = (alert.type ?? "").startsWith("reservation");
+                                                    const estReservation = estAlerteReservation(alert.type);
+                                                    // Répartition d'un enseignant : la page des répartitions
+                                                    const estRepartition = estAlerteRepartition(alert.type);
                                                     return (
                                                         <li key={alert.id} className="p-3 flex gap-3 hover:bg-slate-50 transition-colors">
-                                                            <div className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center ${estReservation ? "bg-indigo-50" : estAbsence ? "bg-red-50" : "bg-amber-50"}`}>
-                                                                {estReservation
+                                                            <div className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center ${estRepartition ? "bg-sky-50" : estReservation ? "bg-indigo-50" : estAbsence ? "bg-red-50" : "bg-amber-50"}`}>
+                                                                {estRepartition
+                                                                    ? <CalendarDays className="h-4 w-4 text-sky-500" />
+                                                                    : estReservation
                                                                     ? <Clapperboard className="h-4 w-4 text-indigo-500" />
                                                                     : estAbsence
                                                                     ? <BookA className="h-4 w-4 text-red-500" />
@@ -341,6 +346,7 @@ export const Topbar = () => {
                                                                         setShowAlerts(false);
                                                                         // L'enseignant retrouve l'élève dans sa feuille d'appel
                                         router.push(
+                                            estRepartition ? "/planing" :
                                             estReservation ? (isAdmin ? "/rooms/reservations" : "/rooms/cinema") :
                                             isAdmin ? "/absences" : "/absences/new"
                                         );

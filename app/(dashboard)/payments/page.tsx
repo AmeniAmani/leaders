@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Eye, Trash2, Loader2, CreditCard, User } from "lucide-react";
+import { filtreRecherche } from "@/lib/recherche";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -89,8 +90,9 @@ export default function StudentsPage() {
         }
     };
 
+    const correspond = filtreRecherche(searchTerm);
     const filteredPayments = payments.filter(payment => {
-        const matchesSearch = `${payment.student?.firstName || ''} ${payment.student?.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = correspond([payment.student?.firstName, payment.student?.lastName]);
         const matchesAS = selectedAS ? payment.as === selectedAS : true;
         const paymentMonth = new Date(payment.paymentDate).getMonth() + 1; // 1-12
         const matchesMonth = selectedMonth ? paymentMonth === parseInt(selectedMonth) : true;
