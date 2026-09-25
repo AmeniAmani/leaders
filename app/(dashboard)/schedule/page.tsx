@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Plus, X, BookOpen, User, Home, Layers, Trash2, Pencil, Printer, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Plus, X, BookOpen, User, Home, Layers, Trash2, Pencil, Printer, Loader2, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { messageErreur, messageException } from "@/lib/erreur-api";
 
@@ -15,6 +15,17 @@ const GRID_COLS = "grid-cols-[110px_repeat(10,minmax(124px,1fr))]";
 // Hauteur minimale d'un jour, et d'une bande quand plusieurs cours partagent une case
 const ROW_MIN_HEIGHT = 110;
 const BAND_MIN_HEIGHT = 80;
+
+const NIVEAUX: Record<string, string> = {
+    "1": "السابعة أساسي",
+    "2": "الثامنة أساسي",
+    "3": "التاسعة أساسي",
+};
+// « السابعة أساسي 1 » : écrit dans l'ordre de lecture, le navigateur l'affiche de droite à gauche
+const libelleClasse = (c?: { level: string; name: string } | null) =>
+    c ? `${NIVEAUX[c.level] ?? ""} ${c.name}`.trim() : "";
+// Isole un morceau de texte (arabe ou latin) pour qu'il ne se mélange pas avec ses voisins
+const isoler = (texte: string) => `\u2068${texte}\u2069`;
 
 // "08:30" -> 8.5
 const decimalHour = (start: string) =>
@@ -411,6 +422,11 @@ export default function SchedulePage() {
                     .group\/item .text-\[12px\] { font-size: 10px !important; }
                     .group\/item .text-\[10px\] { font-size: 9px !important; }
                     .group\/item svg { width: 10px !important; height: 10px !important; }
+
+                    /* Cases de cours : texte réduit pour tenir dans la hauteur imprimée */
+                    .case-cours { gap: 0 !important; padding: 1px 2px !important; }
+                    .case-cours span { font-size: 9px !important; line-height: 1.15 !important; }
+                    .case-cours svg { width: 8px !important; height: 8px !important; }
                     
                     /* Remove transitions and transforms for better printing */
                     * {
@@ -616,7 +632,7 @@ export default function SchedulePage() {
                                             const teacher = teachers.find(t => String(t.id) === item.teacherId);
                                             const studentClass = classes.find(c => String(c.id) === item.classId);
                                             const subjectName = subjects.find(s => s.id === item.subjectId)?.name || item.subject?.name;
-                                            const classShort = (studentClass?.level === "1") ? `${studentClass?.name}ق7أساسي` : (studentClass?.level === "2") ? `${studentClass?.name}ق8أساسي` : (studentClass?.level === "3") ? `${studentClass?.name}ق9أساسي` : "";
+                                            const classLabel = libelleClasse(studentClass);
 
                                             const badges = [
                                                 item.week === "A" && { label: "A", className: "bg-blue-600 text-white" },
@@ -636,7 +652,7 @@ export default function SchedulePage() {
                                                     }}
                                                 >
                                                     <div
-                                                        title={[badges.map(b => `[${b.label}]`).join(" "), subjectName, teacher?.name, room?.name, classShort].filter(Boolean).join(" · ")}
+                                                        title={[badges.map(b => `[${b.label}]`).join(" "), subjectName, teacher?.name, room?.name, classLabel].filter(Boolean).map(t => isoler(String(t))).join(" · ")}
                                                         className={`w-full h-full rounded-lg border border-slate-200 pointer-events-auto shadow-sm relative overflow-hidden flex flex-col ${item.color}`}
                                                     >
                                                         {/** Boutton Modifier et Supprimer Cours */}
@@ -644,33 +660,39 @@ export default function SchedulePage() {
                                                             <button onClick={(e) => { e.stopPropagation(); handleEditEntry(item); }} className="p-1 rounded-lg bg-white/40 hover:bg-white/60 text-current transition-all"><Pencil className="w-3 h-3" /></button>
                                                             <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(item.id); }} className="p-1 rounded-lg bg-white/40 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-3 h-3" /></button>
                                                         </div>
-                                                        {/** Informations Cours : textes en entier, avec retour à la ligne */}
-                                                        <div className={`overflow-hidden leading-tight flex-1 min-h-0 flex flex-col gap-0.5 ${isShared ? "px-1.5 py-1 justify-start" : "p-1.5 justify-center"}`}>
-                                                            {/** Badges A/B/GR + Matiere */}
-                                                            <div className="flex items-start gap-1 min-w-0">
+                                                        {/** Informations Cours : une information par ligne, en gras et centrée ;
+                                                             dir="auto" : chaque texte (arabe ou latin) garde son sens d'écriture */}
+                                                        <div className={`case-cours overflow-hidden flex-1 min-h-0 flex flex-col items-center text-center font-bold ${isShared ? "px-1 py-0.5 justify-center gap-0.5 leading-tight" : "px-1.5 py-1 justify-evenly leading-snug"}`}>
+                                                            {/** Badges A/B/GR + Matière */}
+                                                            <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
                                                                 {badges.map(b => (
                                                                     <span key={b.label} className={`shrink-0 px-1 rounded text-[10px] font-black leading-4 ${b.className}`}>
                                                                         {b.label}
                                                                     </span>
                                                                 ))}
-                                                                <span className="text-[10px] font-bold uppercase opacity-80 leading-4 min-w-0 [overflow-wrap:anywhere]">
+                                                                <span dir="auto" className={`${isShared ? "text-[11px]" : "text-[13px]"} min-w-0 [overflow-wrap:anywhere]`}>
                                                                     {subjectName}
                                                                 </span>
                                                             </div>
                                                             {/** Enseignant */}
-                                                            <div className={viewMode === 'room' || viewMode === 'class' ? 'flex items-start gap-1 no-print' : 'flex items-start gap-1'}>
-                                                                <User className="w-2.5 h-2.5 opacity-60 shrink-0 mt-px" />
-                                                                <span className="font-bold text-[10px] min-w-0 [overflow-wrap:anywhere]">{teacher?.name}</span>
+                                                            <div className={`flex items-center justify-center gap-1 min-w-0 max-w-full ${viewMode === 'room' || viewMode === 'class' ? 'no-print' : ''}`}>
+                                                                <User className="w-3 h-3 opacity-60 shrink-0" />
+                                                                <span dir="auto" className={`${isShared ? "text-[10px]" : "text-xs"} min-w-0 [overflow-wrap:anywhere]`}>{teacher?.name}</span>
                                                             </div>
-                                                            {/** Salle | Classe */}
-                                                            <div className="flex items-start gap-1">
-                                                                <Home className="w-2.5 h-2.5 opacity-60 shrink-0 mt-px" />
-                                                                <span className="font-medium text-[9px] min-w-0 [overflow-wrap:anywhere]">
-                                                                    <span className={`${viewMode === "room" ? "no-print" : ""}`}>{room?.name}</span>
-                                                                    <span className={viewMode === "room" || viewMode === "class" ? "no-print" : ""}> | </span>
-                                                                    <span className={`${viewMode === "class" ? "no-print" : ""}`}>{classShort}</span>
-                                                                </span>
-                                                            </div>
+                                                            {/** Salle */}
+                                                            {room?.name && (
+                                                                <div className={`flex items-center justify-center gap-1 min-w-0 max-w-full ${viewMode === "room" ? "no-print" : ""}`}>
+                                                                    <Home className="w-3 h-3 opacity-60 shrink-0" />
+                                                                    <span dir="auto" className={`${isShared ? "text-[10px]" : "text-xs"} min-w-0 [overflow-wrap:anywhere]`}>{room.name}</span>
+                                                                </div>
+                                                            )}
+                                                            {/** Classe */}
+                                                            {classLabel && (
+                                                                <div className={`flex items-center justify-center gap-1 min-w-0 max-w-full ${viewMode === "class" ? "no-print" : ""}`}>
+                                                                    <GraduationCap className="w-3 h-3 opacity-60 shrink-0" />
+                                                                    <span dir="auto" className={`${isShared ? "text-[10px]" : "text-xs"} min-w-0 [overflow-wrap:anywhere]`}>{classLabel}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
