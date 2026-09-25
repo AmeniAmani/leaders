@@ -46,9 +46,27 @@ export default function ParentsPage() {
         }
     };
 
-    const filteredParents = parents.filter(parent =>
-        (parent.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Recherche sans tenir compte de la casse, des accents ni des espaces en trop
+    const normaliser = (s: unknown) =>
+        String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const chiffres = (s: unknown) => String(s ?? "").replace(/\D/g, "");
+
+    // Chaque mot tapé doit se retrouver quelque part : noms des tuteurs, noms des
+    // enfants ou téléphones (comparés chiffres seuls : « 22 123 » trouve « 22123456 »)
+    const mots = normaliser(searchTerm).split(" ").filter(Boolean);
+    const filteredParents = mots.length === 0 ? parents : parents.filter(parent => {
+        const enfants = students.filter(s => s.parentId === parent.id);
+        const texte = normaliser([
+            parent.name1, parent.name2,
+            ...enfants.map(e => `${e.firstName || ""} ${e.lastName || ""}`),
+        ].join(" "));
+        const telephones = [parent.phone1, parent.phone2].map(chiffres).filter(Boolean);
+        return mots.every(mot => {
+            if (texte.includes(mot)) return true;
+            const num = chiffres(mot);
+            return num.length > 0 && num.length === mot.replace(/[\s.+()-]/g, "").length && telephones.some(t => t.includes(num));
+        });
+    });
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev =>
