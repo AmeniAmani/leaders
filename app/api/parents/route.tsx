@@ -2,6 +2,7 @@ import  prisma  from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { cookies } from 'next/headers';
+import { trierParents } from '../../../lib/parents';
 
 export async function GET() {
     const parents = await prisma.parent.findMany({
@@ -9,7 +10,8 @@ export async function GET() {
             childrenIds: true
         }
     })
-    return NextResponse.json(parents)
+    // Par nom de famille (voir lib/parents.ts)
+    return NextResponse.json(trierParents(parents))
 }
 
 export async function POST(request: Request) {
