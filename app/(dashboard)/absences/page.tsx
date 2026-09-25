@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, Filter, Send, CheckCircle2, Clock, Loader2, User, User2, GraduationCap, UserX, X, Save, CalendarDays, FileText, Trash2, BellRing, Check, ChevronDown, RefreshCw, Ticket } from "lucide-react";
+import { Search, Plus, Filter, Send, CheckCircle2, Clock, Loader2, User, User2, GraduationCap, UserX, X, Save, CalendarDays, FileText, Trash2, BellRing, Check, ChevronDown, RefreshCw, Ticket, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -825,6 +825,12 @@ export default function AbsencesPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                {tab === "students" && isAdmin && (
+                    <Link href="/absences/appels" className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-medium border border-slate-200 flex items-center gap-2 transition-all active:scale-95">
+                        <ClipboardCheck className="w-5 h-5 text-slate-500" />
+                        Appels du jour
+                    </Link>
+                )}
                 {tab === "students" && isAdmin && (
                     <Link href="/absences/feuille" className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-medium border border-slate-200 flex items-center gap-2 transition-all active:scale-95">
                         <FileText className="w-5 h-5 text-slate-500" />

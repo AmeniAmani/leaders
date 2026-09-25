@@ -259,6 +259,23 @@ export async function POST(request: Request) {
                 }
             }
 
+            // 3 ter. L'appel est noté comme fait, même si aucun élève n'est signalé
+            const nbSignales = await tx.absence.count({
+                where: { classId: cid, dateAbsence: targetDate, hour: hour },
+            });
+            const appel = {
+                hourEnd: hourEnd,
+                teacherId: teacherId ? Number(teacherId) : null,
+                faitPar: nameCookieStr,
+                nbSignales,
+                source: "saisie",
+            };
+            await tx.appel.upsert({
+                where: { classId_date_hour: { classId: cid, date: targetDate, hour: hour } },
+                create: { classId: cid, date: targetDate, hour: hour, ...appel },
+                update: appel,
+            });
+
             // 4. Journal d'activité
             const details: string[] = [];
             if (toCreateList.length > 0) details.push(`${toCreateList.length} ajoutée(s)`);

@@ -10,6 +10,8 @@ interface Slot {
     teacherName: string | null;
     subjectName: string | null;
     couvert?: boolean;
+    // Cours dont l'appel n'a pas été fait : colonne vide
+    appelFait?: boolean;
 }
 interface Student {
     id: number;
@@ -71,8 +73,11 @@ export default function FeuillePresencePage() {
     const marque = (studentId: number, hour: string): { mark: string; minutes: number | null } | null =>
         data?.absenceMap?.[`${studentId}-${hour}`] || null;
 
+    // Cours prévu, mais aucun appel saisi pour lui
+    const sansAppel = (s: Slot) => s.couvert !== false && s.appelFait === false;
+
     const totalAbsences = (studentId: number) =>
-        slots.filter(s => s.couvert !== false && marque(studentId, s.hour)).length;
+        slots.filter(s => s.couvert !== false && !sansAppel(s) && marque(studentId, s.hour)).length;
 
     // Couleurs par type de signalement
     const styleMarque = (m: string) =>
@@ -123,7 +128,9 @@ export default function FeuillePresencePage() {
 
         html += `<tr>`;
         slots.forEach(sl => {
-            html += `<td style="${b}${c}background:#1E293B;color:#FFFFFF;font-weight:bold;font-size:14pt;">${esc(slotLabel(sl))}</td>`;
+            html += `<td style="${b}${c}background:#1E293B;color:#FFFFFF;font-weight:bold;font-size:14pt;">${esc(slotLabel(sl))}${
+                sansAppel(sl) ? `<br/><span style="font-size:10pt;font-weight:normal;color:#FCA5A5;">appel non fait</span>` : ""
+            }</td>`;
         });
         html += `</tr>`;
 
@@ -134,7 +141,7 @@ export default function FeuillePresencePage() {
             html += `<td style="${b}${c}background:${fond};font-size:13pt;color:#94A3B8;">${idx + 1}</td>`;
             html += `<td style="${b}background:${fond};font-weight:bold;font-size:15pt;padding-left:10px;">${esc(`${st.firstName || ""} ${st.lastName || ""}`.trim())}</td>`;
             slots.forEach(sl => {
-                if (estVierge || sl.couvert === false) {
+                if (estVierge || sl.couvert === false || sansAppel(sl)) {
                     html += `<td style="${b}${c}background:#F8FAFC;">&#160;</td>`;
                     return;
                 }
@@ -156,7 +163,7 @@ export default function FeuillePresencePage() {
 
         // Légende et visa
         html += `<tr><td colspan="${nbCol}" style="height:16px;"></td></tr>`;
-        html += `<tr><td colspan="${nbCol}" style="font-size:13pt;color:#64748B;padding:6px;white-space:nowrap;">P = Pr&eacute;sent &#160; A = Absent &#160; E = Exclus &#160; R = Retard (minutes)</td></tr>`;
+        html += `<tr><td colspan="${nbCol}" style="font-size:13pt;color:#64748B;padding:6px;white-space:nowrap;">P = Pr&eacute;sent &#160; A = Absent &#160; E = Exclus &#160; R = Retard (minutes) &#160; Colonne vide = appel non fait</td></tr>`;
         html += `<tr><td colspan="${nbCol}" style="height:28px;"></td></tr>`;
         html += `<tr><td colspan="${nbCol}" style="font-size:13pt;color:#64748B;padding:6px;white-space:nowrap;">Signature du directeur / Cachet : ____________________</td></tr>`;
 
@@ -350,6 +357,9 @@ export default function FeuillePresencePage() {
                                                 c.couvert === false ? "bg-slate-400 text-white/80" : "bg-slate-800 text-white"
                                             }`} style={{ minWidth: "78px" }}>
                                                 {slotLabel(c)}
+                                                {sansAppel(c) && (
+                                                    <span className="block text-[9px] font-medium text-red-300 mt-0.5">appel non fait</span>
+                                                )}
                                             </th>
                                         ))}
                                     </tr>
@@ -369,7 +379,7 @@ export default function FeuillePresencePage() {
                                                     <td key={`pc-${i}`} className="border border-slate-300 bg-amber-50/50" />
                                                 ) : (
                                                     <td key={`c-${st.id}-${c.hour}`} className={`border border-slate-300 px-2 py-1.5 text-center h-9 ${c.couvert === false ? "bg-slate-50/60" : ""}`}>
-                                                        {estVierge || c.couvert === false ? null : (() => {
+                                                        {estVierge || c.couvert === false || sansAppel(c) ? null : (() => {
                                                             const m = marque(st.id, c.hour);
                                                             if (!m) return (
                                                                 <span className="cell-mark inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 font-bold text-xs border border-emerald-200">
@@ -420,6 +430,10 @@ export default function FeuillePresencePage() {
                             <span className="flex items-center gap-1.5">
                                 <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-100 text-amber-700 font-black text-[10px] border border-amber-300">R</span>
                                 Retard (minutes)
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-white border border-slate-300" />
+                                Colonne vide : appel non fait
                             </span>
                         </div>
                         <div className="text-xs text-slate-500 text-center shrink-0">

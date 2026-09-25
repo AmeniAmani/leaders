@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { trierEleves } from '../../../../lib/eleves';
 import { NextResponse } from 'next/server'
 
 function libelleClasse(level: string | null, name: string | null) {
@@ -22,7 +23,8 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
             room: true
         }
     })
-    return NextResponse.json(classItem)
+    // Élèves par nom, puis prénom
+    return NextResponse.json(classItem ? { ...classItem, students: trierEleves(classItem.students) } : classItem)
 }
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {

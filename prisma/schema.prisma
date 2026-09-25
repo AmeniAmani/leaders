@@ -107,6 +107,7 @@ model Teacher {
   planings  Planing[]
   schedules Schedule[]
   roomReservations RoomReservation[]
+  appels    Appel[]
   subject   Subject?   @relation(fields: [subjectId], references: [id])
   user      User?
   classes   Class[]    @relation("ClassToTeacher")
@@ -130,6 +131,7 @@ model Class {
   teacherAbsences TeacherAbsence[] @relation("TeacherAbsenceToClass")
   billets     Billet[]
   roomReservations RoomReservation[]
+  appels      Appel[]
 
   chats Chat[]
   chatBlocked Boolean? @default(false)
@@ -249,6 +251,29 @@ model Absence {
   teacher     Teacher?  @relation(fields: [teacherId], references: [id])
   parentNotice ParentAbsenceNotice? @relation(fields: [parentNoticeId], references: [id], onDelete: SetNull)
   billet      Billet?
+}
+
+// Appel enregistré pour une classe, un jour et un créneau d'une heure, même quand
+// aucun élève n'est signalé : c'est ce qui distingue « tout le monde était là »
+// de « l'appel n'a pas été fait ». Un seul appel par classe et par créneau.
+model Appel {
+  id         Int      @id @default(autoincrement())
+  classId    Int
+  teacherId  Int?
+  date       DateTime // le jour, à minuit UTC (même format que Absence.dateAbsence)
+  hour       String   // "10:00"
+  hourEnd    String   // "11:00"
+  faitPar    String   // nom de l'enseignant ou login de l'admin qui a enregistré
+  nbSignales Int      @default(0) // absents, retards et exclus au dernier enregistrement
+  source     String   @default("saisie") // "saisie" | "reprise_absences" | "reprise_journal"
+  createdAt  DateTime @default(now()) // premier enregistrement
+  updatedAt  DateTime @updatedAt      // dernier enregistrement
+  classe     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher    Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@unique([classId, date, hour])
+  @@index([date])
+  @@index([teacherId, date])
 }
 
 // Billet d'entrée (élève absent qui arrive en cours de journée) ou de retard.

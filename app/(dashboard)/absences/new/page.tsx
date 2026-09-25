@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock, Check, X, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { comparerEleves } from "@/lib/eleves";
 import { useRouter } from "next/navigation";
 
 interface Student {
@@ -466,9 +467,8 @@ export default function NewAbsencePage() {
             if (s && typeof s.id === "number") parId.set(s.id, s);
         });
 
-        const sortedStudents = Array.from(parId.values()).sort((a, b) =>
-            (a.firstName || "").localeCompare(b.firstName || "")
-        );
+        // Par nom, puis prénom
+        const sortedStudents = Array.from(parId.values()).sort(comparerEleves);
 
         setStudents(sortedStudents);
         const initialAttendance: Record<number, string> = {};

@@ -1,4 +1,5 @@
 import  prisma  from '../../../lib/prisma';
+import { trierEleves } from '../../../lib/eleves';
 import { NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -39,7 +40,8 @@ export async function GET(request: Request) {
         }
     })
 
-    return NextResponse.json(students)
+    // Par nom, puis prénom
+    return NextResponse.json(trierEleves(students))
 }
 
 export async function POST(request: Request) {

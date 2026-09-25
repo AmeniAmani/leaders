@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { trierEleves } from '../../../../lib/eleves';
 
 export async function GET(request: Request) {
     try {
@@ -44,7 +45,8 @@ export async function GET(request: Request) {
 
         const notesMap = new Map(existingNotes.map(n => [n.studentId, n]));
 
-        const studentData = students.map(student => {
+        // Par nom, sans dépendre de la collation de la base
+        const studentData = trierEleves(students).map(student => {
             const note = notesMap.get(student.id);
             return {
                 id: student.id,
