@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Upload, User, Calendar, Mail, Phone, MapPin, Trash2, Loader2, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function StudentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -68,10 +69,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
             if (res.ok) {
                 router.push("/students");
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update student", error);
+            alert(messageException(error));
         } finally {
             setIsSubmitting(false);
         }
@@ -101,10 +103,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
             if (res.ok) {
                 router.push("/students");
             } else {
-                alert("Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete student", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -180,9 +183,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                         <h3 className="font-bold text-slate-900">Informations Scolaires</h3>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Classe</label>
+                            <label className="text-sm font-medium text-slate-700">Classe<span className="text-red-500">*</span></label>
                             <select
                                 name="classId"
+                                required
                                 defaultValue={student.classId}
                                 disabled={isReadOnly}
                                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
@@ -196,11 +200,13 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
 
                         <div className="space-y-2 pt-4 border-t border-slate-50">
-                            <label className="text-sm font-medium text-slate-700">Parent / Tuteur</label>
+                            <label className="text-sm font-medium text-slate-700">Parent / Tuteur<span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                 <select
                                     name="parentId"
+                                    // Une fiche encore sans parent reste modifiable
+                                    required={!!student.parentId}
                                     defaultValue={student.parentId}
                                     disabled={isReadOnly}
                                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
@@ -230,9 +236,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Prénom</label>
+                                <label className="text-sm font-medium text-slate-700">Prénom<span className="text-red-500">*</span></label>
                                 <input
                                     name="firstName"
+                                    required
                                     type="text"
                                     defaultValue={student.firstName}
                                     readOnly={isReadOnly}
@@ -240,9 +247,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom</label>
+                                <label className="text-sm font-medium text-slate-700">Nom<span className="text-red-500">*</span></label>
                                 <input
                                     name="lastName"
+                                    required
                                     type="text"
                                     defaultValue={student.lastName}
                                     readOnly={isReadOnly}

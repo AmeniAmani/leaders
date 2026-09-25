@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { ChevronLeft, Save, BookOpen, Trash2, User, Eye, Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 import { motion } from "framer-motion";
 
 interface Subject {
@@ -114,13 +115,13 @@ export default function EditSubjectPage({ params }: { params: Promise<{ id: stri
                 method: "DELETE",
             });
 
-            if (!res.ok) throw new Error("Failed to delete");
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/subjects");
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Une erreur est survenue lors de la suppression.");
+            alert(messageException(error));
         }
     };
 

@@ -64,6 +64,13 @@ export async function PUT(
         }
         const confirmReplace = formData.get('confirmReplace') === '1';
 
+        if (!subjectId) {
+            return NextResponse.json({ error: "La matière principale est obligatoire" }, { status: 400 });
+        }
+        if (!classIdsProvided || classIds.length === 0) {
+            return NextResponse.json({ error: "Au moins une classe enseignée est obligatoire" }, { status: 400 });
+        }
+
         // --- Règle : une classe ne peut avoir qu'un seul enseignant par matière ---
         // L'enseignant en cours de modification est exclu : il ne peut pas être
         // en conflit avec lui-même sur une classe qu'il assure déjà.

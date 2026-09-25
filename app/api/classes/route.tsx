@@ -34,6 +34,13 @@ export async function POST(request: Request) {
     try {
         const json = await request.json()
 
+        if (!json.level) {
+            return NextResponse.json({ error: "Le niveau est obligatoire" }, { status: 400 })
+        }
+        if (!json.name || !String(json.name).trim()) {
+            return NextResponse.json({ error: "Le nom de la classe est obligatoire" }, { status: 400 })
+        }
+
         // Salle obligatoire
         if (!json.roomId) {
             return NextResponse.json({ error: "La salle est obligatoire" }, { status: 400 })

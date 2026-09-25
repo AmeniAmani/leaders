@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
 import { notifyAllParents } from '../../../lib/notifications';
+import { dateValide } from '../../../lib/erreur-api';
 
 export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
@@ -20,7 +21,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    try {
     const json = await request.json()
+
+    if (!json.name || !String(json.name).trim()) {
+        return NextResponse.json({ error: "Le nom de l'événement est obligatoire" }, { status: 400 })
+    }
+    if (!dateValide(json.dateEvent)) {
+        return NextResponse.json({ error: "La date de l'événement est obligatoire" }, { status: 400 })
+    }
+
     const event = await prisma.event.create({
         data: {
             name: json.name,
@@ -48,4 +58,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(event)
+    } catch (error) {
+        console.error("Error creating event:", error)
+        return NextResponse.json({ error: "Une erreur est survenue lors de la création de l'événement" }, { status: 500 })
+    }
 }

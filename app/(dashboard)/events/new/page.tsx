@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, Save, CalendarArrowDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function NeweventsPage() {
     const router = useRouter();
@@ -26,13 +27,13 @@ export default function NeweventsPage() {
                 }),
             });
 
-            if (!res.ok) throw new Error("Erreur lors de la création");
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/events");
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Une erreur est survenue.");
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -62,7 +63,7 @@ export default function NeweventsPage() {
                 <div className="space-y-4">
                     {/** Nom */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de l'Evénement</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de l'Evénement<span className="text-red-500">*</span></label>
                         <input
                             type="text"
                             name="name"
@@ -83,10 +84,11 @@ export default function NeweventsPage() {
                         </div>
                         {/** Date */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Date de l'Evénement</label>
+                            <label className="text-sm font-medium text-slate-700">Date de l'Evénement<span className="text-red-500">*</span></label>
                             <input
                                 type="date"
                                 name="dateEvent"
+                                required
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                             />
                     </div>

@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, MapPin, Users, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function EditRoomPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -64,10 +65,11 @@ export default function EditRoomPage({ params }: { params: Promise<{ id: string 
             if (res.ok) {
                 router.push("/rooms");
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update room", error);
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -81,10 +83,11 @@ export default function EditRoomPage({ params }: { params: Promise<{ id: string 
             if (res.ok) {
                 router.push("/rooms");
             } else {
-                alert("Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete room", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -131,9 +134,10 @@ export default function EditRoomPage({ params }: { params: Promise<{ id: string 
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de la Salle</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de la Salle<span className="text-red-500">*</span></label>
                         <input
                             name="name"
+                            required
                             type="text"
                             defaultValue={room.name}
                             readOnly={isReadOnly}

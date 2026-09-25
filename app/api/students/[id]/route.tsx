@@ -23,6 +23,7 @@ export async function PUT(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    try {
     const { id } = await params;
     const formData = await request.formData();
 
@@ -39,12 +40,35 @@ export async function PUT(
     const phone = formData.get('phone') as string
     const gender = formData.get('gender') as string
 
-    let photoName = null;
+    if (!firstName || !firstName.trim()) {
+        return NextResponse.json({ error: "Le prénom de l'élève est obligatoire" }, { status: 400 })
+    }
+    if (!lastName || !lastName.trim()) {
+        return NextResponse.json({ error: "Le nom de l'élève est obligatoire" }, { status: 400 })
+    }
+    if (!classId) {
+        return NextResponse.json({ error: "La classe est obligatoire" }, { status: 400 })
+    }
+
+    const existant = await prisma.student.findUnique({
+        where: { id: parseInt(id) },
+        select: { parentId: true, photo: true }
+    })
+    if (!existant) {
+        return NextResponse.json({ error: "Élève introuvable" }, { status: 404 })
+    }
+    // Parent obligatoire, mais une fiche encore sans parent reste modifiable :
+    // on refuse seulement de retirer un parent déjà attribué.
+    if (!parentId && existant.parentId) {
+        return NextResponse.json({ error: "Le parent ou tuteur est obligatoire" }, { status: 400 })
+    }
+
+    // Sans nouvelle photo, on garde la photo actuelle ; seule l'image par défaut
+    // suit le genre choisi.
+    let photoName = existant.photo;
     if (!file || file.size === 0) {
-        if (gender === 'f') {
-            photoName = 'fille.jfif';
-        } else {
-            photoName = 'garcon.jfif';
+        if (!photoName || photoName === 'fille.jfif' || photoName === 'garcon.jfif') {
+            photoName = gender === 'f' ? 'fille.jfif' : 'garcon.jfif';
         }
     }
 
@@ -103,6 +127,10 @@ export async function PUT(
     }
 
     return NextResponse.json(student)
+    } catch (error) {
+        console.error("Erreur mise à jour élève:", error);
+        return NextResponse.json({ error: "Une erreur est survenue lors de la mise à jour de l'élève" }, { status: 500 })
+    }
 }
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {

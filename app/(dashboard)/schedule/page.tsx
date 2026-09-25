@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Plus, X, BookOpen, User, Home, Layers, Trash2, Pencil, Printer, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 // Créneaux d'une heure, de 08:00 à 18:00
@@ -240,23 +241,24 @@ export default function SchedulePage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entryData)
                 });
-                if (res.ok) {
-                    const updated = await res.json();
-                    setEntries(entries.map(e => e.id === editingId ? { ...updated, classId: String(updated.classId), teacherId: String(updated.teacherId), roomId: String(updated.roomId), color: e.color } : e));
-                }
+                if (!res.ok) throw new Error(await messageErreur(res));
+                const updated = await res.json();
+                setEntries(entries.map(e => e.id === editingId ? { ...updated, classId: String(updated.classId), teacherId: String(updated.teacherId), roomId: String(updated.roomId), color: e.color } : e));
             } else {
                 const res = await fetch('/api/schedule', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entryData)
                 });
-                if (res.ok) {
-                    const newEntry = await res.json();
-                    setEntries([...entries, { ...newEntry, classId: String(newEntry.classId), teacherId: String(newEntry.teacherId), roomId: String(newEntry.roomId), color: COLORS[entries.length % COLORS.length] }]);
-                }
+                if (!res.ok) throw new Error(await messageErreur(res));
+                const newEntry = await res.json();
+                setEntries([...entries, { ...newEntry, classId: String(newEntry.classId), teacherId: String(newEntry.teacherId), roomId: String(newEntry.roomId), color: COLORS[entries.length % COLORS.length] }]);
             }
         } catch (err) {
+            // La fenêtre reste ouverte pour corriger la saisie
             console.error("Failed to save entry", err);
+            alert(messageException(err));
+            return;
         }
 
         setIsAdding(false);
@@ -731,7 +733,7 @@ export default function SchedulePage() {
                             <form onSubmit={handleAddEntry} className="p-8 space-y-6">
                                 {/** Matiere : ligne Séparé */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700">Matière</label>
+                                    <label className="text-sm font-semibold text-slate-700">Matière<span className="text-red-500">*</span></label>
                                     {viewMode === "teacher" ? (
                                         <input
                                             required
@@ -783,9 +785,10 @@ export default function SchedulePage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     {/** Durée Debut */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700">Durée (heures)</label>
+                                        <label className="text-sm font-semibold text-slate-700">Durée (heures)<span className="text-red-500">*</span></label>
                                         <input
                                             type="number"
+                                            required
                                             step="1"
                                             min="1"
                                             max="4"
@@ -796,7 +799,7 @@ export default function SchedulePage() {
                                     </div>
                                     {/** Salle */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700">Salle</label>
+                                        <label className="text-sm font-semibold text-slate-700">Salle<span className="text-red-500">*</span></label>
                                         {viewMode === "room" ? (
                                             <input
                                                 readOnly
@@ -821,7 +824,7 @@ export default function SchedulePage() {
                                 {viewMode === "room" ? (
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700">Enseignant</label>
+                                            <label className="text-sm font-semibold text-slate-700">Enseignant<span className="text-red-500">*</span></label>
                                             <select
                                                 required
                                                 value={formData.teacherId}
@@ -835,7 +838,7 @@ export default function SchedulePage() {
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700">Classe</label>
+                                            <label className="text-sm font-semibold text-slate-700">Classe<span className="text-red-500">*</span></label>
                                             <select
                                                 required
                                                 value={formData.classId}
@@ -851,7 +854,7 @@ export default function SchedulePage() {
                                     </div>
                                 ) : /* View Class*/viewMode === "class" ? (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700">Enseignant</label>
+                                        <label className="text-sm font-semibold text-slate-700">Enseignant<span className="text-red-500">*</span></label>
                                         <select
                                             required
                                             value={formData.teacherId}
@@ -866,7 +869,7 @@ export default function SchedulePage() {
                                     </div>
                                 ) : /* View Teacher*/(
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700">Classe</label>
+                                        <label className="text-sm font-semibold text-slate-700">Classe<span className="text-red-500">*</span></label>
                                         <select
                                             required
                                             value={formData.classId}

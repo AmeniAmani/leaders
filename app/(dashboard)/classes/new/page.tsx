@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Save, School, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function NewClassPage() {
     const router = useRouter();
@@ -58,16 +59,13 @@ export default function NewClassPage() {
                 }),
             });
 
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error);
-            }
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/classes");
             router.refresh();
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
-            alert(error?.message ?? "Une erreur est survenue");
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -97,7 +95,7 @@ export default function NewClassPage() {
                 <div className="mt-6 space-y-3">
                     {/* Level  */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Niveau</label>
+                        <label className="text-sm font-medium text-slate-700">Niveau<span className="text-red-500">*</span></label>
                         <select required name="level" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm">
                             <option value="">Sélectionner un niveau...</option>
                             <option value="1">السابعة أساسي</option>
@@ -107,7 +105,7 @@ export default function NewClassPage() {
                     </div>
                     {/* Class Name  */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de la Classe</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de la Classe<span className="text-red-500">*</span></label>
                         <input
                             type="text"
                             name="name"
@@ -128,7 +126,7 @@ export default function NewClassPage() {
                     </div>
                     {/* Salle attitrée  */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Salle</label>
+                        <label className="text-sm font-medium text-slate-700">Salle<span className="text-red-500">*</span></label>
                         <select
                             required
                             name="roomId"

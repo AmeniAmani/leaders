@@ -2,6 +2,7 @@ import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { alerterRepartition } from '../../../../lib/alertes-repartition';
+import { dateValide } from '../../../../lib/erreur-api';
 
 export async function GET(
     request: Request,
@@ -30,6 +31,22 @@ export async function PUT(
         const id = parseInt((await params).id);
         const data = await request.json();
         const { teacherId, as, type, datePlaning, description, name, classId } = data;
+
+        if (!type) {
+            return NextResponse.json({ error: "Le chapitre / la section est obligatoire" }, { status: 400 });
+        }
+        if (!name || !String(name).trim()) {
+            return NextResponse.json({ error: "Le nom est obligatoire" }, { status: 400 });
+        }
+        if (!dateValide(datePlaning)) {
+            return NextResponse.json({ error: "La date prévue est obligatoire" }, { status: 400 });
+        }
+        if (!classId) {
+            return NextResponse.json({ error: "La classe est obligatoire" }, { status: 400 });
+        }
+        if (!teacherId) {
+            return NextResponse.json({ error: "L'enseignant est obligatoire" }, { status: 400 });
+        }
 
         const cookiesStore = await cookies();
         const nameuser = cookiesStore.get('user-name')?.value;
@@ -67,7 +84,7 @@ export async function PUT(
 
         return NextResponse.json(planing);
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to update planing' }, { status: 500 });
+        return NextResponse.json({ error: "Une erreur est survenue lors de la modification de la répartition" }, { status: 500 });
     }
 }
 

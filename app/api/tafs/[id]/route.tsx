@@ -3,6 +3,7 @@ import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server'
 
 import { writeFile, mkdir, unlink } from 'fs/promises';
+import { dateValide } from '../../../../lib/erreur-api';
 import path from 'path';
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -32,6 +33,16 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         const classId = formData.get('classId')
         const newFiles = formData.getAll('files') as File[]
         const filesToDelete = formData.getAll('filesToDelete') as string[] // IDs of files to delete
+
+        if (!dateValide(dateTaf)) {
+            return NextResponse.json({ error: "La date est obligatoire" }, { status: 400 })
+        }
+        if (!classId) {
+            return NextResponse.json({ error: "La classe est obligatoire" }, { status: 400 })
+        }
+        if (!subjectId) {
+            return NextResponse.json({ error: "La matière est obligatoire" }, { status: 400 })
+        }
 
         const taf = await prisma.taf.update({
             where: {
@@ -105,7 +116,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         return NextResponse.json(taf)
     } catch (error) {
         console.error("Error updating taf:", error)
-        return NextResponse.json({ error: "Failed to update taf" }, { status: 500 })
+        return NextResponse.json({ error: "Une erreur est survenue lors de la modification du TAF" }, { status: 500 })
     }
 }
 

@@ -5,6 +5,7 @@ import { ChevronLeft, Save, Users, AlertTriangle, Ticket, CalendarClock, Check, 
 import Link from "next/link";
 import { comparerEleves } from "@/lib/eleves";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 interface Student {
     id: number;
@@ -355,10 +356,11 @@ export default function NewAbsencePage() {
             }));
 
         const retardSansDuree = absentStudents.find(
-            (s: any) => s.status === "retard" && (!s.lateMinutes || s.lateMinutes <= 0)
+            (s: any) => s.status === "retard" &&
+                (!Number.isInteger(s.lateMinutes) || s.lateMinutes < 1 || s.lateMinutes > 240)
         );
         if (retardSansDuree) {
-            alert("Indiquez le nombre de minutes pour chaque retard.");
+            alert("Indiquez un nombre entier de minutes (1 à 240) pour chaque retard.");
             setIsLoading(false);
             return;
         }
@@ -386,16 +388,13 @@ export default function NewAbsencePage() {
                 }),
             });
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || "Failed to sync absences");
-            }
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/absences");
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Une erreur est survenue.");
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -553,7 +552,7 @@ export default function NewAbsencePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Prof */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Enseignant</label>
+                                <label className="text-sm font-medium text-slate-700">Enseignant<span className="text-red-500">*</span></label>
                                 <select
                                     name="teacherId"
                                     required
@@ -597,7 +596,7 @@ export default function NewAbsencePage() {
                             </div>
                             {/* classe */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Classe</label>
+                                <label className="text-sm font-medium text-slate-700">Classe<span className="text-red-500">*</span></label>
                                 <select
                                     name="classId"
                                     required
@@ -626,7 +625,7 @@ export default function NewAbsencePage() {
                             </div>
                             {/* Date */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Date Absence</label>
+                                <label className="text-sm font-medium text-slate-700">Date Absence<span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     name="dateAbsence"
@@ -747,6 +746,7 @@ export default function NewAbsencePage() {
                                                             type="number"
                                                             min="1"
                                                             max="240"
+                                                            step="1"
                                                             value={lateMinutes[s.id] || ""}
                                                             onChange={(e) => setLateMinutes(prev => ({ ...prev, [s.id]: e.target.value }))}
                                                             placeholder="min"

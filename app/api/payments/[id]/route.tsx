@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
+import { erreurPaiement } from '../../../../lib/paiements';
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -17,9 +18,15 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 }
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+    try {
     const params = await props.params;
     const json = await request.json()
     const paymentId = Number(params.id)
+
+    const erreur = erreurPaiement(json)
+    if (erreur) {
+        return NextResponse.json({ error: erreur }, { status: 400 })
+    }
 
     const payment = await prisma.payment.update({
         where: {
@@ -58,6 +65,10 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     });
                 
     return NextResponse.json(payment)
+    } catch (error) {
+        console.error("Error updating payment:", error)
+        return NextResponse.json({ error: "Une erreur est survenue lors de la modification du paiement" }, { status: 500 })
+    }
 }
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {

@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, School, Trash2, User, Eye, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 import { motion } from "framer-motion";
 
 export default function EditClassPage({ params }: { params: Promise<{ id: string }> }) {
@@ -90,11 +91,11 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
             if (res.ok) {
                 router.push("/classes");
             } else {
-                const error = await res.json();
-                alert(error.error);
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update class", error);
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -108,11 +109,11 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
             if (res.ok) {
                 router.push("/classes");
             } else {
-                const error = await res.json();
-                alert(error?.error ?? "Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete class", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -161,9 +162,10 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Niveau</label>
+                        <label className="text-sm font-medium text-slate-700">Niveau<span className="text-red-500">*</span></label>
                         <select
                             name="level"
+                            required
                             defaultValue={classe.level}
                             disabled={isReadOnly}
                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
@@ -174,7 +176,7 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                         </select>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de la Classe</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de la Classe<span className="text-red-500">*</span></label>
                         <input
                             name="name"
                             type="text"
@@ -196,7 +198,7 @@ export default function EditClassPage({ params }: { params: Promise<{ id: string
                     </div>
                     {/* Salle attitrée de la classe */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Salle</label>
+                        <label className="text-sm font-medium text-slate-700">Salle<span className="text-red-500">*</span></label>
                         <select
                             required
                             name="roomId"

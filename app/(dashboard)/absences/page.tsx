@@ -488,9 +488,9 @@ export default function AbsencesPage() {
                 absence.lateMinutes ? String(absence.lateMinutes) : "10"
             );
             if (saisie === null) return;
-            minutes = Number(saisie);
-            if (!minutes || minutes <= 0) {
-                alert("Indiquez un nombre de minutes valide.");
+            minutes = Number(saisie.trim().replace(",", "."));
+            if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+                alert("Indiquez un nombre entier de minutes (1 à 240).");
                 return;
             }
         }

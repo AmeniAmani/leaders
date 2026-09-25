@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Save, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 interface Subject {
     id: number;
@@ -78,13 +79,13 @@ export default function NewStudentPage() {
                 body: formData
             });
 
-            if (!res.ok) throw new Error("Erreur lors de la création");
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/tafs");
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Une erreur est survenue.");
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -119,9 +120,10 @@ export default function NewStudentPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Matiere */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Matière</label>
+                                <label className="text-sm font-medium text-slate-700">Matière<span className="text-red-500">*</span></label>
                                 <select
                                     name="subjectId"
+                                    required
                                     defaultValue={subjects.length === 1 ? subjects[0].id : ""}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 >
@@ -133,9 +135,10 @@ export default function NewStudentPage() {
                             </div>
                             {/* Classe */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Classe</label>
+                                <label className="text-sm font-medium text-slate-700">Classe<span className="text-red-500">*</span></label>
                                 <select
                                     name="classId"
+                                    required
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 >
                                     <option value="">Sélectionner une Classe...</option>
@@ -162,10 +165,11 @@ export default function NewStudentPage() {
                             </div>
                             {/* Date */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Date</label>
+                                <label className="text-sm font-medium text-slate-700">Date<span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     name="dateTaf"
+                                    required
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />
                             </div>

@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, User, Mail, Phone, MapPin, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function ParentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -83,10 +84,11 @@ export default function ParentDetailsPage({ params }: { params: Promise<{ id: st
             if (res.ok) {
                 router.push("/parents");
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update parent", error);
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -100,10 +102,11 @@ export default function ParentDetailsPage({ params }: { params: Promise<{ id: st
             if (res.ok) {
                 router.push("/parents");
             } else {
-                alert("Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete parent", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -151,7 +154,7 @@ export default function ParentDetailsPage({ params }: { params: Promise<{ id: st
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom Complet</label>
+                                <label className="text-sm font-medium text-slate-700">Nom Complet<span className="text-red-500">*</span></label>
                                 <input
                                     name="name1"
                                     type="text"
@@ -190,7 +193,7 @@ export default function ParentDetailsPage({ params }: { params: Promise<{ id: st
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Téléphone</label>
+                                <label className="text-sm font-medium text-slate-700">Téléphone<span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                     <input
@@ -292,6 +295,7 @@ export default function ParentDetailsPage({ params }: { params: Promise<{ id: st
                                 <input
                                     name="username"
                                     type="text"
+                                    required
                                     defaultValue={parent.username}
                                     readOnly={isReadOnly}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"

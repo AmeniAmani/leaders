@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
+import { erreurPaiement } from '../../../lib/paiements';
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
 
         const { num, studentId, as, paymentLines } = json
 
+        const erreur = erreurPaiement(json)
+        if (erreur) {
+            return NextResponse.json({ error: erreur }, { status: 400 })
+        }
+
         const payment = await prisma.payment.create({
             data: {
                 num,
@@ -104,6 +110,6 @@ export async function POST(request: Request) {
         return NextResponse.json(payment)
     } catch (error) {
         console.error("Error creating payment:", error)
-        return NextResponse.json({ error: "Failed to create payment" }, { status: 500 })
+        return NextResponse.json({ error: "Une erreur est survenue lors de la création du paiement" }, { status: 500 })
     }
 }

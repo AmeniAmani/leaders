@@ -14,6 +14,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 }
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+  try {
   const params = await props.params;
   const json = await request.json()
 
@@ -44,6 +45,14 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
           }
       });
   return NextResponse.json(user)
+  } catch (error: any) {
+    console.error("Erreur modification utilisateur:", error)
+    // login est la clé de la table : la base refuse déjà un doublon
+    if (error?.code === 'P2002') {
+      return NextResponse.json({ error: "Cet identifiant est déjà utilisé" }, { status: 400 })
+    }
+    return NextResponse.json({ error: "Une erreur est survenue lors de la modification de l'utilisateur" }, { status: 500 })
+  }
 }
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {

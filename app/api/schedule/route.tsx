@@ -1,4 +1,5 @@
 import prisma from '../../../lib/prisma';
+import { erreurCours } from '../../../lib/cours';
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -14,7 +15,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    try {
     const json = await request.json()
+
+    const erreur = erreurCours(json)
+    if (erreur) {
+        return NextResponse.json({ error: erreur }, { status: 400 })
+    }
+
     const schedule = await prisma.schedule.create({
         data: {
             as: json.as,
@@ -30,4 +38,8 @@ export async function POST(request: Request) {
         }
     })
     return NextResponse.json(schedule)
+    } catch (error) {
+        console.error("Error saving schedule:", error)
+        return NextResponse.json({ error: "Une erreur est survenue lors de l'ajout du cours" }, { status: 500 })
+    }
 }

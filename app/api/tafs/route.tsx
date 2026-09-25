@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server'
 import { notifyParentsOfClass } from '../../../lib/notifications';
+import { dateValide } from '../../../lib/erreur-api';
 
 export async function GET() {
 
@@ -35,6 +36,16 @@ export async function POST(request: Request) {
         const description = formData.get('description') as string
         const classId = formData.get('classId')
         const files = formData.getAll('files') as File[]
+
+        if (!dateValide(dateTaf)) {
+            return NextResponse.json({ error: "La date est obligatoire" }, { status: 400 })
+        }
+        if (!classId) {
+            return NextResponse.json({ error: "La classe est obligatoire" }, { status: 400 })
+        }
+        if (!subjectId) {
+            return NextResponse.json({ error: "La matière est obligatoire" }, { status: 400 })
+        }
 
         const taf = await prisma.taf.create({
             data: {
@@ -94,6 +105,6 @@ export async function POST(request: Request) {
         return NextResponse.json(taf)
     } catch (error) {
         console.error("Error creating taf:", error)
-        return NextResponse.json({ error: "Failed to create taf" }, { status: 500 })
+        return NextResponse.json({ error: "Une erreur est survenue lors de la création du TAF" }, { status: 500 })
     }
 }

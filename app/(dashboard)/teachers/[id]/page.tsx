@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Upload, User, Mail, Phone, BookOpen, Trash2, GraduationCap, X, Loader2, School, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Subject {
@@ -188,7 +189,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
             return submitForm(formData, true);
         }
 
-        if (!res.ok) throw new Error("Failed to update teacher");
+        if (!res.ok) throw new Error(await messageErreur(res));
         return true;
     };
 
@@ -199,6 +200,18 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
         const formData = new FormData(e.currentTarget);
         formData.set("classIds", JSON.stringify(selectedClassIds));
 
+        // La matière et au moins une classe restent obligatoires
+        if (!selectedSubjectId) {
+            alert("Veuillez choisir la matière principale.");
+            setIsSaving(false);
+            return;
+        }
+        if (selectedClassIds.length === 0) {
+            alert("Veuillez sélectionner au moins une classe enseignée.");
+            setIsSaving(false);
+            return;
+        }
+
         try {
             const done = await submitForm(formData, false);
             if (!done) return;
@@ -207,7 +220,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Erreur lors de la mise à jour");
+            alert(messageException(error));
         } finally {
             setIsSaving(false);
         }
@@ -225,22 +238,13 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/teachers/${unwrappedParams.id}`, { method: "DELETE" });
-            if (!res.ok) {
-                let message = "Erreur lors de la suppression";
-                try {
-                    const data = await res.json();
-                    if (data?.error) message = data.error;
-                } catch {
-                    // réponse non JSON : on garde le message générique
-                }
-                throw new Error(message);
-            }
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/teachers");
             router.refresh();
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
-            alert(err?.message || "Une erreur est survenue lors de la suppression.");
+            alert(messageException(err));
         } finally {
             setIsDeleting(false);
         }
@@ -268,7 +272,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                 body: JSON.stringify({ password: newPassword }),
             });
 
-            if (!res.ok) throw new Error("Erreur lors de la mise à jour");
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             setIsPasswordModalOpen(false);
             setNewPassword("");
@@ -276,7 +280,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
             alert("Mot de passe mis à jour avec succès.");
         } catch (err) {
             console.error(err);
-            setPasswordError("Une erreur est survenue.");
+            setPasswordError(messageException(err));
         } finally {
             setIsResetting(false);
         }
@@ -365,11 +369,12 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Matière Principale</label>
+                                <label className="text-sm font-medium text-slate-700">Matière Principale<span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                     <select
                                         name="subjectId"
+                                        required
                                         value={selectedSubjectId}
                                         onChange={(e) => handleSubjectChange(e.target.value)}
                                         disabled={isReadOnly}
@@ -450,7 +455,7 @@ export default function TeacherDetailsPage({ params }: { params: Promise<{ id: s
                             <div>
                                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
                                     <School className="w-5 h-5 text-emerald-500" />
-                                    Classes enseignées
+                                    <span>Classes enseignées<span className="text-red-500">*</span></span>
                                 </h3>
                                 <p className="text-sm text-slate-500 mt-1">
                                     Les classes dans lesquelles cet enseignant intervient.

@@ -9,14 +9,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    try {
     const json = await request.json()
-    const hashedPassword = await bcrypt.hash(json.password, 10);
     if (!json.login || !json.password ) {
         return NextResponse.json(
-            { error: 'Login and password are required' },
+            { error: "L'identifiant et le mot de passe sont obligatoires" },
             { status: 400 }
         )
     }
+    const hashedPassword = await bcrypt.hash(json.password, 10);
     const user = await prisma.user.create({
         //data: json
         data: {
@@ -39,4 +40,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(user)
+    } catch (error: any) {
+        console.error("Erreur création utilisateur:", error)
+        // login est la clé de la table : la base refuse déjà un doublon
+        if (error?.code === 'P2002') {
+            return NextResponse.json({ error: "Cet identifiant est déjà utilisé" }, { status: 400 })
+        }
+        return NextResponse.json({ error: "Une erreur est survenue lors de la création de l'utilisateur" }, { status: 500 })
+    }
 }

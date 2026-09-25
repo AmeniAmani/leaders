@@ -28,6 +28,9 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         if (!json.phone1 || !String(json.phone1).trim()) {
             return NextResponse.json({ error: "Le téléphone du tuteur 1 est obligatoire" }, { status: 400 })
         }
+        if (!json.username || !String(json.username).trim()) {
+            return NextResponse.json({ error: "Le nom d'utilisateur est obligatoire" }, { status: 400 })
+        }
 
         const updateData: any = {
             name1: String(json.name1).trim(),

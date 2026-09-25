@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Save, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 import { SemaineReference } from "@/components/settings/SemaineReference";
 
 interface User {
@@ -80,7 +81,7 @@ export default function SettingsPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formData),
                 });
-                if (!res.ok) throw new Error("Failed to create user");
+                if (!res.ok) throw new Error(await messageErreur(res));
             } else {
                 // Edit
                 const res = await fetch(`/api/users/${selectedUser?.login}`, {
@@ -88,13 +89,13 @@ export default function SettingsPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formData),
                 });
-                if (!res.ok) throw new Error("Failed to update user");
+                if (!res.ok) throw new Error(await messageErreur(res));
             }
             await fetchUsers();
             handleCloseModal();
         } catch (err) {
             console.error(err);
-            setError("Une erreur est survenue.");
+            setError(messageException(err));
         } finally {
             setIsSubmitting(false);
         }
@@ -107,11 +108,11 @@ export default function SettingsPage() {
             const res = await fetch(`/api/users/${login}`, {
                 method: "DELETE",
             });
-            if (!res.ok) throw new Error("Failed to delete user");
+            if (!res.ok) throw new Error(await messageErreur(res));
             await fetchUsers();
         } catch (err) {
             console.error(err);
-            setError("Erreur lors de la suppression.");
+            setError(messageException(err));
         }
     };
 

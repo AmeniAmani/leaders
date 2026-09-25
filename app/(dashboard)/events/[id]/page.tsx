@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Trash2, Loader2, CalendarArrowDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -64,10 +65,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             if (res.ok) {
                 router.push("/events");
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update event", error);
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -81,10 +83,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             if (res.ok) {
                 router.push("/events");
             } else {
-                alert("Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete event", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -132,7 +135,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 <div className="space-y-4">
                     {/** Nom */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de l'Evénement</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de l'Evénement<span className="text-red-500">*</span></label>
                         <input
                             type="text"
                             name="name"
@@ -159,10 +162,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                         </div>
                         {/** Date */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Date de l'Evénement</label>
+                            <label className="text-sm font-medium text-slate-700">Date de l'Evénement<span className="text-red-500">*</span></label>
                             <input
                                 type="date"
                                 name="dateEvent"
+                                required
                                 readOnly={isReadOnly}
                                 defaultValue={event.dateEvent ? new Date(event.dateEvent).toISOString().split('T')[0] : ''}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"

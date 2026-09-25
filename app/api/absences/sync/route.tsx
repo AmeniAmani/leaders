@@ -43,6 +43,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "L'heure de fin est obligatoire" }, { status: 400 });
         }
 
+        if (!teacherId) {
+            return NextResponse.json({ error: "L'enseignant est obligatoire" }, { status: 400 });
+        }
+
         if (String(hourEnd) <= String(hour)) {
             return NextResponse.json(
                 { error: "L'heure de fin doit être postérieure à l'heure de début" },
@@ -92,6 +96,18 @@ export async function POST(request: Request) {
                 status: st.status || "absence",
                 lateMinutes: st.lateMinutes ? Number(st.lateMinutes) : null,
             }));
+
+        // Un retard se compte en minutes entières
+        const retardInvalide = incoming.find(st =>
+            st.status === "retard" &&
+            (!Number.isInteger(st.lateMinutes) || (st.lateMinutes as number) < 1 || (st.lateMinutes as number) > 240)
+        );
+        if (retardInvalide) {
+            return NextResponse.json(
+                { error: "Les minutes de retard doivent être un nombre entier entre 1 et 240" },
+                { status: 400 }
+            );
+        }
 
         const incomingStudentIds = incoming.map(st => st.id);
 

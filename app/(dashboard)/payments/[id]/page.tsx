@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Trash2, Loader2, CreditCard, Plus, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 interface Student {
     id: number;
@@ -151,10 +152,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                 router.push("/payments");
                 router.refresh();
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update payment", error);
+            alert(messageException(error));
         } finally {
             setIsSubmitting(false);
         }
@@ -169,10 +171,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                 router.push("/payments");
                 router.refresh();
             } else {
-                alert("Erreur lors de la suppression");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to delete payment", error);
+            alert(messageException(error));
         } finally {
             setIsDeleting(false);
         }
@@ -262,7 +265,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
 
                                 {/* student */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Elève</label>
+                                    <label className="text-sm font-medium text-slate-700">Elève<span className="text-red-500">*</span></label>
                                     <select
                                         name="studentId"
                                         defaultValue={payment?.studentId}
@@ -290,7 +293,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
 
                                 {/* Annee Scolaire */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Année Scolaire</label>
+                                    <label className="text-sm font-medium text-slate-700">Année Scolaire<span className="text-red-500">*</span></label>
                                     <select
                                         name="as"
                                         defaultValue={payment?.as}
@@ -341,7 +344,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             {/* Titre */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Titre</label>
+                                                <label className="text-sm font-medium text-slate-700">Titre<span className="text-red-500">*</span></label>
                                                 <select
                                                     required
                                                     value={line.title}
@@ -360,7 +363,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
 
                                             {/* Montant */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Montant (DT)</label>
+                                                <label className="text-sm font-medium text-slate-700">Montant (DT)<span className="text-red-500">*</span></label>
                                                 <input
                                                     type="number"
                                                     required
@@ -375,7 +378,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
 
                                             {/* Type */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Mode de Règlement</label>
+                                                <label className="text-sm font-medium text-slate-700">Mode de Règlement<span className="text-red-500">*</span></label>
                                                 <select
                                                     required
                                                     value={line.type}
@@ -393,7 +396,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                         {line.type === "cheque" && (
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                                                 <div className="md:col-span-2 space-y-2">
-                                                    <label className="text-sm font-medium text-slate-700">N° de Chèque</label>
+                                                    <label className="text-sm font-medium text-slate-700">N° de Chèque<span className="text-red-500">*</span></label>
                                                     <input
                                                         type="text"
                                                         required

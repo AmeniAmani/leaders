@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { ChevronLeft, Save, Trash2, Loader2, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 interface Mat {
     id: number;
@@ -93,10 +94,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
             if (res.ok) {
                 router.push("/tafs");
             } else {
-                alert("Erreur lors de la mise à jour");
+                alert(await messageErreur(res));
             }
         } catch (error) {
             console.error("Failed to update taf", error);
+            alert(messageException(error));
         } finally {
             setIsSubmitting(false);
         }
@@ -164,9 +166,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Matiere */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Matière</label>
+                                <label className="text-sm font-medium text-slate-700">Matière<span className="text-red-500">*</span></label>
                                 <select
                                     name="subjectId"
+                                    required
                                     defaultValue={taf?.subjectId}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 >
@@ -178,9 +181,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                             {/* Classe */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Classe</label>
+                                <label className="text-sm font-medium text-slate-700">Classe<span className="text-red-500">*</span></label>
                                 <select
                                     name="classId"
+                                    required
                                     defaultValue={taf?.classId}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 >
@@ -210,10 +214,11 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                             {/* Date */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Date</label>
+                                <label className="text-sm font-medium text-slate-700">Date<span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     name="dateTaf"
+                                    required
                                     defaultValue={new Date(taf?.dateTaf).toISOString().split('T')[0]}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                                 />

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, Filter, Eye, Trash2, Loader2, BookOpen, Save, LibraryBig, Calendar, Clock, ChevronRight, Edit3, Trash, Paperclip } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, Toaster } from "react-hot-toast";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 import RessouceModal from "./RessouceModal";
 
 export default function PlaningPage() {
@@ -198,11 +199,11 @@ export default function PlaningPage() {
                 setEditingId(null);
                 fetchPlanings();
             } else {
-                toast.error("Erreur lors de l'enregistrement");
+                toast.error(await messageErreur(response));
             }
         } catch (error) {
             console.error(error);
-            toast.error("Erreur réseau");
+            toast.error(messageException(error));
         } finally {
             setIsSubmitting(false);
         }
@@ -326,7 +327,7 @@ export default function PlaningPage() {
                     </div>
                     {/** Classe */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Classe</label>
+                        <label className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Classe<span className="text-red-500">*</span></label>
                         <select
                             required
                             value={selectedClassId}
@@ -369,7 +370,7 @@ export default function PlaningPage() {
 
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">Chapitre / Section</label>
+                                <label className="text-sm font-semibold text-slate-700">Chapitre / Section<span className="text-red-500">*</span></label>
                                 <select
                                     name="type"
                                     required
@@ -384,7 +385,7 @@ export default function PlaningPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">Nom</label>
+                                <label className="text-sm font-semibold text-slate-700">Nom<span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     name="name"
@@ -397,7 +398,7 @@ export default function PlaningPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">Date Prévue</label>
+                                <label className="text-sm font-semibold text-slate-700">Date Prévue<span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     name="datePlaning"

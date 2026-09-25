@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import  prisma  from '../../../../lib/prisma';
 import { NextResponse } from 'next/server'
+import { dateValide } from '../../../../lib/erreur-api';
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -13,8 +14,17 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 }
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+    try {
     const params = await props.params;
     const json = await request.json()
+
+    if (!json.name || !String(json.name).trim()) {
+        return NextResponse.json({ error: "Le nom de l'événement est obligatoire" }, { status: 400 })
+    }
+    if (!dateValide(json.dateEvent)) {
+        return NextResponse.json({ error: "La date de l'événement est obligatoire" }, { status: 400 })
+    }
+
     const event = await prisma.event.update({
         where: {
             id: Number(params.id)
@@ -22,7 +32,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         data: {
             name: json.name,
             target: Number(json.target),
-            dateEvent: json.date ? new Date(json.dateEvent) : null,
+            dateEvent: new Date(json.dateEvent),
             description: json.description,
         }
     })
@@ -38,6 +48,10 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         });
         
     return NextResponse.json(event)
+    } catch (error) {
+        console.error("Error updating event:", error)
+        return NextResponse.json({ error: "Une erreur est survenue lors de la modification de l'événement" }, { status: 500 })
+    }
 }
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {

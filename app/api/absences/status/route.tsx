@@ -24,8 +24,8 @@ export async function POST(request: Request) {
         }
 
         const minutes = status === "retard" ? Number(lateMinutes) : null;
-        if (status === "retard" && (!minutes || minutes <= 0)) {
-            return NextResponse.json({ error: "Indiquez le nombre de minutes de retard" }, { status: 400 });
+        if (status === "retard" && (!Number.isInteger(minutes) || (minutes as number) < 1 || (minutes as number) > 240)) {
+            return NextResponse.json({ error: "Les minutes de retard doivent être un nombre entier entre 1 et 240" }, { status: 400 });
         }
 
         const store = await cookies();

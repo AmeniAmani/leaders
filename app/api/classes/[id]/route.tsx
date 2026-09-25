@@ -33,6 +33,13 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     try {
         const json = await request.json()
 
+        if (!json.level) {
+            return NextResponse.json({ error: "Le niveau est obligatoire" }, { status: 400 })
+        }
+        if (!json.name || !String(json.name).trim()) {
+            return NextResponse.json({ error: "Le nom de la classe est obligatoire" }, { status: 400 })
+        }
+
         if (!json.roomId) {
             return NextResponse.json({ error: "La salle est obligatoire" }, { status: 400 })
         }

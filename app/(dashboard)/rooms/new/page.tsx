@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, Save, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { messageErreur, messageException } from "@/lib/erreur-api";
 
 export default function NewRoomPage() {
     const router = useRouter();
@@ -22,16 +23,13 @@ export default function NewRoomPage() {
                 body: JSON.stringify({ name: formData.get("name"), type: formData.get("type"), capacity: formData.get("capacity"), status: formData.get("status") }),
             });
 
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error);
-            }
+            if (!res.ok) throw new Error(await messageErreur(res));
 
             router.push("/rooms");
             router.refresh();
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
-            alert(error?.message ?? "Une erreur est survenue.");
+            alert(messageException(error));
         } finally {
             setIsLoading(false);
         }
@@ -60,10 +58,11 @@ export default function NewRoomPage() {
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Nom de la Salle</label>
+                        <label className="text-sm font-medium text-slate-700">Nom de la Salle<span className="text-red-500">*</span></label>
                         <input
                             type="text"
                             name="name"
+                            required
                             placeholder="Ex: Salle 101"
                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                         />
