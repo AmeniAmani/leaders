@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { enregistrerAppareil } from '../../../../../lib/appareils';
 
 export async function POST(request: Request) {
     try {
-        const { username, password } = await request.json();
+        const { username, password, pushToken, platform } = await request.json();
 
         if (!username || !password) {
             return NextResponse.json({ error: "Username and password are required" }, { status: 400 });
@@ -28,12 +29,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
+        // Téléphone inscrit aux notifications push : seulement ici, après vérification du mot de passe
+        const push = await enregistrerAppareil(parent.id, pushToken, platform);
+
         // In a real app, you'd return a JWT here. 
         // For this task, we'll return the parent info.
         return NextResponse.json({
             id: parent.id,
             name: parent.name1,
-            username: parent.username
+            username: parent.username,
+            push
         });
     } catch (error) {
         console.error("Login error:", error);

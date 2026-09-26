@@ -58,6 +58,7 @@ model Parent {
   active        Boolean?       @default(true)
   notifications Notification[]
   childrenIds   Student[]
+  devices       ParentDevice[]
 }
 model StudentDocument {
   id        Int      @id @default(autoincrement())
@@ -403,7 +404,23 @@ model Notification {
   type      String
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
+  // Supprimée par le parent dans l'application : masquée pour lui, gardée en base comme preuve d'envoi
+  hiddenAt  DateTime?
   parent    Parent   @relation(fields: [parentId], references: [id])
+}
+
+// Téléphone d'un parent inscrit aux notifications push (identifiant Firebase).
+// Enregistré seulement à la connexion, après vérification du mot de passe.
+model ParentDevice {
+  id         Int      @id @default(autoincrement())
+  parentId   Int
+  token      String   @unique
+  platform   String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
 }
 
 model Note {

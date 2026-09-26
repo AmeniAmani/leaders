@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         }
 
         const notifications = await prisma.notification.findMany({
-            where: { parentId: Number(parentId) },
+            where: { parentId: Number(parentId), hiddenAt: null },
             orderBy: { createdAt: 'desc' },
             take: 20
         });

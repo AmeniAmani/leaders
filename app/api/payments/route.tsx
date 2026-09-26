@@ -118,7 +118,8 @@ export async function POST(request: Request) {
                 payment.student.parentId,
                 "Paiement enregistré",
                 `Un paiement de ${montantDT(totalAmount)} a été enregistré pour ${prenom || "votre enfant"} le ${date}. Détail : ${detail}.`,
-                "paiement"
+                "paiement",
+                payment.studentId
             );
         }
                 

@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import { isoler } from './bidi';
+import { envoyerPush, type EnvoiPush } from './push';
 
 // Prénom de l'élève pour les messages aux parents (un parent peut avoir
 // plusieurs enfants). À défaut de prénom, le nom ; sinon null. Isolé (prénom arabe).
@@ -17,25 +18,27 @@ export function listePrenoms(prenoms: string[]): string {
     return `${prenoms.slice(0, -1).join(', ')} et ${prenoms[prenoms.length - 1]}`;
 }
 
-// Parents des élèves des classes données, avec les prénoms de leurs enfants concernés.
-export async function prenomsParParent(classIds: number[]): Promise<Map<number, string[]>> {
+// Parents des élèves des classes données, avec les prénoms de leurs enfants concernés
+// et le premier de ces enfants (page ouverte en touchant la notification push).
+export async function prenomsParParent(classIds: number[]): Promise<Map<number, { prenoms: string[]; studentId: number }>> {
     const students = await prisma.student.findMany({
         where: { classId: { in: classIds }, parentId: { not: null } },
-        select: { parentId: true, firstName: true, lastName: true },
+        select: { id: true, parentId: true, firstName: true, lastName: true },
         orderBy: [{ firstName: 'asc' }, { id: 'asc' }]
     });
 
-    const parents = new Map<number, string[]>();
+    const parents = new Map<number, { prenoms: string[]; studentId: number }>();
     for (const s of students) {
-        const prenoms = parents.get(s.parentId!) || [];
+        const parent = parents.get(s.parentId!) || { prenoms: [], studentId: s.id };
         const prenom = prenomEleve(s);
-        if (prenom && !prenoms.includes(prenom)) prenoms.push(prenom);
-        parents.set(s.parentId!, prenoms);
+        if (prenom && !parent.prenoms.includes(prenom)) parent.prenoms.push(prenom);
+        parents.set(s.parentId!, parent);
     }
     return parents;
 }
 
-export async function createNotification(parentId: number, title: string, message: string, type: string) {
+// Enregistre la notification ; renvoie false si l'écriture a échoué.
+async function enregistrer(parentId: number, title: string, message: string, type: string): Promise<boolean> {
     try {
         await prisma.notification.create({
             data: {
@@ -45,8 +48,17 @@ export async function createNotification(parentId: number, title: string, messag
                 type,
             }
         });
+        return true;
     } catch (error) {
         console.error("Error creating notification:", error);
+        return false;
+    }
+}
+
+// Enregistre la notification, puis l'envoie en push sur les téléphones du parent.
+export async function createNotification(parentId: number, title: string, message: string, type: string, studentId?: number | null) {
+    if (await enregistrer(parentId, title, message, type)) {
+        envoyerPush([{ parentId, title, body: message, type, studentId }]);
     }
 }
 
@@ -57,25 +69,34 @@ export async function notifyParentsOfStudent(studentId: number, title: string, m
     });
 
     if (student?.parentId) {
-        await createNotification(student.parentId, title, message, type);
+        await createNotification(student.parentId, title, message, type, studentId);
     }
 }
 
 // Un message par parent, construit avec les prénoms de ses enfants de la classe.
 export async function notifyParentsOfClass(classId: number, title: string, message: (prenoms: string) => string, type: string) {
     const parents = await prenomsParParent([classId]);
+    const envois: EnvoiPush[] = [];
 
-    for (const [parentId, prenoms] of parents) {
-        await createNotification(parentId, title, message(listePrenoms(prenoms)), type);
+    for (const [parentId, { prenoms, studentId }] of parents) {
+        const body = message(listePrenoms(prenoms));
+        if (await enregistrer(parentId, title, body, type)) {
+            envois.push({ parentId, title, body, type, studentId });
+        }
     }
+    envoyerPush(envois);
 }
 
 export async function notifyAllParents(title: string, message: string, type: string) {
     const parents = await prisma.parent.findMany({
         select: { id: true }
     });
+    const envois: EnvoiPush[] = [];
 
     for (const parent of parents) {
-        await createNotification(parent.id, title, message, type);
+        if (await enregistrer(parent.id, title, message, type)) {
+            envois.push({ parentId: parent.id, title, body: message, type });
+        }
     }
+    envoyerPush(envois);
 }

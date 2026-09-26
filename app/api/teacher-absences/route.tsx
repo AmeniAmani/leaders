@@ -3,6 +3,7 @@ import prisma from '../../../lib/prisma';
 import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server';
 import { listePrenoms, prenomsParParent } from '../../../lib/notifications';
+import { envoyerPush } from '../../../lib/push';
 
 const classLabel = (level: string | null, name: string | null) => {
     const prefix =
@@ -110,6 +111,15 @@ export async function POST(request: Request) {
         });
         const nomsClasses = classes.map(c => isoler(classLabel(c.level, c.name))).join(', ');
 
+        // Un message par parent, avec les prénoms de ses enfants concernés
+        const notifications = Array.from(parents, ([parentId, { prenoms }]) => ({
+            parentId,
+            title: "Absence enseignant",
+            message: prenoms.length === 0 ? message
+                : `${message} ${prenoms.length > 1 ? "Enfants concernés" : "Enfant concerné"} : ${listePrenoms(prenoms)}.`,
+            type: "absence",
+        }));
+
         const created = await prisma.$transaction(async (tx) => {
             const absence = await tx.teacherAbsence.create({
                 data: {
@@ -128,17 +138,9 @@ export async function POST(request: Request) {
                 }
             });
 
-            // Une seule requête pour toutes les notifications, un message par parent
-            if (parentIds.length > 0) {
-                await tx.notification.createMany({
-                    data: Array.from(parents, ([parentId, prenoms]) => ({
-                        parentId,
-                        title: "Absence enseignant",
-                        message: prenoms.length === 0 ? message
-                            : `${message} ${prenoms.length > 1 ? "Enfants concernés" : "Enfant concerné"} : ${listePrenoms(prenoms)}.`,
-                        type: "absence",
-                    }))
-                });
+            // Une seule requête pour toutes les notifications
+            if (notifications.length > 0) {
+                await tx.notification.createMany({ data: notifications });
             }
 
             await tx.activity.create({
@@ -152,6 +154,9 @@ export async function POST(request: Request) {
 
             return absence;
         });
+
+        // Push après l'enregistrement : les notifications sont en base
+        envoyerPush(notifications.map(n => ({ parentId: n.parentId, title: n.title, body: n.message, type: n.type })));
 
         return NextResponse.json({
             success: true,

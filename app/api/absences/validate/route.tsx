@@ -3,6 +3,7 @@ import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
 import { enfant, notifyParentsOfStudent, prenomEleve } from '../../../../lib/notifications';
 import { rattacherAuPrevenu } from '../../../../lib/absences-parent';
+import { envoyerPush, type EnvoiPush } from '../../../../lib/push';
 
 // Envoie une absence au parent, puis la marque comme validée.
 // Réservé à l'administration.
@@ -148,7 +149,11 @@ async function envoyerJournee(p: {
 }) {
     const dateFr = p.date.toLocaleDateString('fr-FR', { timeZone: 'UTC' });
 
+    // Notification push préparée dans la transaction, envoyée seulement après son succès
+    let push: EnvoiPush | null = null;
+
     const tenter = () => prisma.$transaction(async (tx) => {
+        push = null;
         // Parent déjà prévenu pour ce jour : on rattache, sans notifier de nouveau
         const rattachees = await rattacherAuPrevenu(tx, p.studentId, p.date);
         if (rattachees.length > 0 || await tx.parentAbsenceNotice.findUnique({
@@ -189,6 +194,9 @@ async function envoyerJournee(p: {
                 data: { parentId: p.parentId, title: "Nouvelle absence", message: corps, type: "absence" }
             })
             : null;
+        if (notification) {
+            push = { parentId: notification.parentId, title: notification.title, body: corps, type: "absence", studentId: p.studentId };
+        }
 
         // La contrainte unique (élève, jour) empêche un second envoi concurrent
         const prevenu = await tx.parentAbsenceNotice.create({
@@ -221,6 +229,7 @@ async function envoyerJournee(p: {
         if ((error as { code?: string })?.code !== 'P2002') throw error;
         resultat = await tenter();
     }
+    if (push) envoyerPush([push]);
 
     const absence = await prisma.absence.findUnique({ where: { id: p.absenceId } });
     return NextResponse.json({ success: true, absence, ...resultat });
