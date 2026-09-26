@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { isoler } from '../../../../lib/bidi';
-import { notifyParentsOfStudent } from '../../../../lib/notifications';
+import { enfant, notifyParentsOfStudent, prenomEleve } from '../../../../lib/notifications';
 
 export async function POST(request: Request) {
     try {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             })
         ]);
 
-        const studentMap = new Map(students.map((s: { id: number, firstName: string | null, lastName: string | null }) => [s.id, `${s.firstName || ''} ${s.lastName || ''}`.trim()]));
+        const studentMap = new Map(students.map((s: { id: number, firstName: string | null, lastName: string | null }) => [s.id, prenomEleve(s)]));
 
         // Process notes in an interactive transaction
         await prisma.$transaction(async (tx: any) => {
@@ -77,17 +77,17 @@ export async function POST(request: Request) {
 
         // Trigger notifications after successful save
         for (const n of notes) {
-            const studentName = studentMap.get(n.studentId) || "votre enfant";
+            const prenom = studentMap.get(n.studentId) ?? null;
             const subjectName = isoler(subject?.name) || "une matière";
             let title = "";
             let message = "";
 
             if (n.isAbsent) {
                 title = "Absence au devoir";
-                message = `Votre enfant ${studentName} est marqué(e) absent(e) pour le devoir ${libTypeEpr} en ${subjectName} (${libperiodexam}).`;
+                message = `Votre ${enfant(prenom)} est marqué(e) absent(e) pour le devoir ${libTypeEpr} en ${subjectName} (${libperiodexam}).`;
             } else if (n.noteepre !== null) {
                 title = "Nouvelle note disponible";
-                message = `La note de votre enfant ${studentName} pour le devoir ${libTypeEpr} en ${subjectName} (${libperiodexam}) est disponible : ${n.noteepre}/20.`;
+                message = `La note de votre ${enfant(prenom)} pour le devoir ${libTypeEpr} en ${subjectName} (${libperiodexam}) est disponible : ${n.noteepre}/20.`;
             }
 
             if (title && message) {

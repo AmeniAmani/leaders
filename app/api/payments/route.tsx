@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { erreurPaiement } from '../../../lib/paiements';
+import { createNotification, prenomEleve } from '../../../lib/notifications';
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -90,7 +91,8 @@ export async function POST(request: Request) {
                 }
             },
             include: {
-                paymentLines: true
+                paymentLines: true,
+                student: { select: { firstName: true, lastName: true, parentId: true } }
             }
         })
 
@@ -106,6 +108,19 @@ export async function POST(request: Request) {
                 description: `a créé un payment (N° ${payment.num || payment.id}) de ${totalAmount} DT pour l'année scolaire ${payment.as}.`,
             }
         });
+
+        // 2. Prévenir le parent (création seulement, pas la modification ni la suppression)
+        if (payment.student?.parentId) {
+            const prenom = prenomEleve(payment.student);
+            const date = (payment.paymentDate || new Date()).toLocaleDateString('fr-FR', { timeZone: 'Africa/Tunis' });
+            const detail = payment.paymentLines.map(l => `${l.title} ${montantDT(l.amount)} (${modeReglement(l.type, l.numCheque)})`).join(', ');
+            await createNotification(
+                payment.student.parentId,
+                "Paiement enregistré",
+                `Un paiement de ${montantDT(totalAmount)} a été enregistré pour ${prenom || "votre enfant"} le ${date}. Détail : ${detail}.`,
+                "paiement"
+            );
+        }
                 
         return NextResponse.json(payment)
     } catch (error) {
@@ -113,3 +128,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Une erreur est survenue lors de la création du paiement" }, { status: 500 })
     }
 }
+
+// « 1 250,5 DT »
+const montantDT = (montant: number) =>
+    `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(montant)} DT`;
+
+const modeReglement = (type: string, numCheque: string | null) =>
+    type === 'cheque' ? (numCheque ? `chèque n° ${numCheque}` : "chèque")
+        : type === 'virement' ? "virement"
+            : "comptant";

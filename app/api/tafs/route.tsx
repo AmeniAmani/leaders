@@ -87,7 +87,7 @@ export async function POST(request: Request) {
             await notifyParentsOfClass(
                 Number(classId),
                 "Nouveau TAF/Devoir",
-                `Un nouveau devoir (${type}) a été ajouté : ${description}`,
+                (prenoms) => `Un nouveau devoir (${type}) a été ajouté${prenoms ? ` pour ${prenoms}` : ""} : ${description}`,
                 "taf"
             );
         }

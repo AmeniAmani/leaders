@@ -40,12 +40,14 @@ export async function POST(request: Request) {
         }
     })
 
-    // Send notification to all parents
-    await notifyAllParents(
-        "Nouvel événement",
-        `${json.name} : ${json.description}`,
-        "event"
-    );
+    // Parents prévenus seulement si l'événement les concerne : 1 = Parent, 3 = Parent/Enseignant
+    if (event.target === 1 || event.target === 3) {
+        await notifyAllParents(
+            "Nouvel événement",
+            `${json.name} : ${json.description}`,
+            "event"
+        );
+    }
 
     // 1. Log Activity
     const cookiesStore = cookies();

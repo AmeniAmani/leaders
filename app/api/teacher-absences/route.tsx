@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import prisma from '../../../lib/prisma';
 import { isoler } from '../../../lib/bidi';
 import { NextResponse } from 'next/server';
+import { listePrenoms, prenomsParParent } from '../../../lib/notifications';
 
 const classLabel = (level: string | null, name: string | null) => {
     const prefix =
@@ -88,14 +89,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Enseignant introuvable" }, { status: 404 });
         }
 
-        // Parents des élèves des classes concernées, sans doublon
-        const students = await prisma.student.findMany({
-            where: { classId: { in: ids } },
-            select: { parentId: true }
-        });
-        const parentIds = Array.from(new Set(
-            students.map(s => s.parentId).filter((id): id is number => id !== null)
-        ));
+        // Parents des élèves des classes concernées, sans doublon, avec les prénoms de leurs enfants
+        const parents = await prenomsParParent(ids);
+        const parentIds = Array.from(parents.keys());
 
         // Message envoyé aux familles
         const matiere = teacher.subject?.name ? `, professeur de ${isoler(teacher.subject.name)},` : ",";
@@ -132,13 +128,14 @@ export async function POST(request: Request) {
                 }
             });
 
-            // Une seule requête pour toutes les notifications
+            // Une seule requête pour toutes les notifications, un message par parent
             if (parentIds.length > 0) {
                 await tx.notification.createMany({
-                    data: parentIds.map((parentId) => ({
+                    data: Array.from(parents, ([parentId, prenoms]) => ({
                         parentId,
                         title: "Absence enseignant",
-                        message,
+                        message: prenoms.length === 0 ? message
+                            : `${message} ${prenoms.length > 1 ? "Enfants concernés" : "Enfant concerné"} : ${listePrenoms(prenoms)}.`,
                         type: "absence",
                     }))
                 });

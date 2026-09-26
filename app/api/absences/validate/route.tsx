@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
-import { notifyParentsOfStudent } from '../../../../lib/notifications';
+import { enfant, notifyParentsOfStudent, prenomEleve } from '../../../../lib/notifications';
 import { rattacherAuPrevenu } from '../../../../lib/absences-parent';
 
 // Envoie une absence au parent, puis la marque comme validée.
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
                 nomEleve: absence.student
                     ? `${absence.student.firstName || ''} ${absence.student.lastName || ''}`.trim()
                     : `élève ID ${absence.studentId}`,
+                prenom: prenomEleve(absence.student),
                 nameuser,
             });
         }
@@ -79,15 +80,16 @@ export async function POST(request: Request) {
 
         let titre = "";
         let corps = "";
+        const prenom = prenomEleve(absence.student);
 
         if (absence.status === "exclusion") {
             titre = "Exclusion de cours";
-            corps = `Votre enfant a été exclu du cours le ${formattedDate} ${creneau}.`;
+            corps = `Votre ${enfant(prenom)} a été exclu(e) du cours le ${formattedDate} ${creneau}.`;
         } else if (absence.status === "retard") {
             titre = "Retard";
             corps = absence.lateMinutes
-                ? `Votre enfant est arrivé avec ${absence.lateMinutes} minutes de retard le ${formattedDate}, au cours ${creneau}.`
-                : `Votre enfant est arrivé en retard le ${formattedDate}, au cours ${creneau}.`;
+                ? `Votre ${enfant(prenom)} est arrivé(e) avec ${absence.lateMinutes} minutes de retard le ${formattedDate}, au cours ${creneau}.`
+                : `Votre ${enfant(prenom)} est arrivé(e) en retard le ${formattedDate}, au cours ${creneau}.`;
             if (absence.billet) {
                 corps += " Un billet de retard lui a été délivré par l'administration.";
             }
@@ -141,6 +143,7 @@ async function envoyerJournee(p: {
     parentId: number | null;
     date: Date;
     nomEleve: string;
+    prenom: string | null;
     nameuser: string;
 }) {
     const dateFr = p.date.toLocaleDateString('fr-FR', { timeZone: 'UTC' });
@@ -174,10 +177,10 @@ async function envoyerJournee(p: {
             }),
         ]);
 
-        let corps = `Votre enfant a été marqué absent le ${dateFr} à partir de ${absences[0]?.hour || ""}.`;
+        let corps = `Votre ${enfant(p.prenom)} a été marqué(e) absent(e) le ${dateFr} à partir de ${absences[0]?.hour || ""}.`;
         if (billet) {
             corps += billet.hour
-                ? ` Votre enfant est arrivé à l'école avec un billet d'entrée délivré par l'administration (cours de ${billet.hour}).`
+                ? ` Il/elle est arrivé(e) à l'école avec un billet d'entrée délivré par l'administration (cours de ${billet.hour}).`
                 : " Un billet d'entrée a été délivré par l'administration.";
         }
 
